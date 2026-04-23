@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PEC-ML Prediction System</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0d1117;
+      --surface:  #161b22;
+      --border:   rgba(255,255,255,0.08);
+      --accent:   #58a6ff;
+      --green:    #3fb950;
+      --yellow:   #d29922;
+      --red:      #f85149;
+      --text:     #e6edf3;
+      --muted:    #8b949e;
+      --radius:   12px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+    }
+
+    /* ── Sidebar ─────────────────────────────────────────── */
+    .sidebar {
+      width: 240px;
+      min-height: 100vh;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 24px 16px;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 8px 24px;
+    }
+    .logo-icon {
+      font-size: 28px;
+      color: var(--accent);
+    }
+    .logo h1 { font-size: 20px; font-weight: 700; }
+    .logo p  { font-size: 12px; color: var(--muted); }
+
+    .nav-btn {
+      width: 100%;
+      text-align: left;
+      background: none;
+      border: none;
+      color: var(--muted);
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: background 0.15s, color 0.15s;
+    }
+    .nav-btn:hover         { background: rgba(255,255,255,0.06); color: var(--text); }
+    .nav-btn.active        { background: rgba(88,166,255,0.15); color: var(--accent); font-weight: 600; }
+
+    .sidebar-info {
+      margin-top: auto;
+      padding: 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .sidebar-info strong { color: var(--text); }
+
+    /* ── Main panel ──────────────────────────────────────── */
+    .main {
+      flex: 1;
+      padding: 32px;
+      overflow-y: auto;
+      max-width: 900px;
+    }
+
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ── Cards ────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .card h2 { font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+    .card p  { color: var(--muted); font-size: 14px; line-height: 1.6; }
+
+    /* ── Stats row ────────────────────────────────────────── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .stat-card .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+    .stat-card .value { font-size: 26px; font-weight: 700; margin: 4px 0 2px; }
+    .stat-card .sub   { font-size: 12px; color: var(--muted); }
+    .stat-card.blue   .value { color: var(--accent); }
+    .stat-card.green  .value { color: var(--green); }
+    .stat-card.yellow .value { color: var(--yellow); }
+
+    /* ── Form ─────────────────────────────────────────────── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .field label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .field input, .field select {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 9px 12px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .field input:focus, .field select:focus {
+      border-color: var(--accent);
+    }
+    .field select option { background: #1c2128; }
+
+    .btn-row { display: flex; gap: 12px; }
+    .btn {
+      padding: 10px 24px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary { background: var(--accent); color: #0d1117; }
+    .btn-secondary { background: rgba(255,255,255,0.06); color: var(--text); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── Results ──────────────────────────────────────────── */
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .result-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      text-align: center;
+    }
+    .result-card .r-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing:.05em; }
+    .result-card .r-value { font-size: 32px; font-weight: 700; margin: 8px 0 4px; color: var(--accent); }
+    .result-card .r-unit  { font-size: 12px; color: var(--muted); }
+    .result-card.sth   .r-value { color: var(--green); }
+    .result-card.h2    .r-value { color: var(--yellow); }
+
+    /* ── Performance bar ──────────────────────────────────── */
+    .perf-bar-wrap { margin-top: 6px; }
+    .perf-track {
+      background: rgba(255,255,255,0.06);
+      border-radius: 99px;
+      height: 10px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    .perf-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: var(--accent);
+      transition: width 0.6s ease;
+    }
+
+    /* ── Error banner ─────────────────────────────────────── */
+    .error-banner {
+      display: none;
+      background: rgba(248,81,73,0.12);
+      border: 1px solid rgba(248,81,73,0.4);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      margin-bottom: 20px;
+      color: #ffa7a3;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* ── Loading spinner ──────────────────────────────────── */
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(13,17,23,0.4);
+      border-top-color: #0d1117;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── About page ───────────────────────────────────────── */
+    .about-section { margin-bottom: 20px; }
+    .about-section h3 { font-size: 15px; font-weight: 600; margin-bottom: 10px; color: var(--accent); }
+    .about-section ul { padding-left: 20px; color: var(--muted); font-size: 14px; line-height: 2; }
+    .metric-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .metric-table th, .metric-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+    .metric-table th { color: var(--muted); font-weight: 500; }
+
+    @media (max-width: 680px) {
+      .form-grid   { grid-template-columns: 1fr; }
+      .result-grid { grid-template-columns: 1fr; }
+      .stats-row   { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Sidebar ──────────────────────────────────────────────────────────── -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-icon">⚗️</div>
+    <div>
+      <h1>PEC-ML</h1>
+      <p>Prediction System</p>
+    </div>
+  </div>
+
+  <button class="nav-btn active" onclick="showPage('dashboard',this)">📊 Dashboard</button>
+  <button class="nav-btn"        onclick="showPage('predict',this)">⚡ Predict</button>
+  <button class="nav-btn"        onclick="showPage('results',this)">📈 Results</button>
+  <button class="nav-btn"        onclick="showPage('about',this)">ℹ️ About</button>
+
+  <div class="sidebar-info">
+    <strong>Dataset</strong><br>
+    529 rows from literature<br>
+    410 photocurrent entries<br>
+    48 STH entries<br>
+    57 H₂ entries
+  </div>
+</aside>
+
+<!-- ── Main ─────────────────────────────────────────────────────────────── -->
+<main class="main">
+
+  <div id="error-banner" class="error-banner"></div>
+
+  <!-- Dashboard -->
+  <div id="page-dashboard" class="page active">
+    <div class="card">
+      <h2>Photoelectrochemical Water Splitting</h2>
+      <p>ML-powered prediction of PEC performance from material and experimental parameters.
+         Models trained on literature data: Photocurrent, STH efficiency, and H₂ evolution rate.</p>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card blue">
+        <div class="label">Dataset rows</div>
+        <div class="value">529</div>
+        <div class="sub">From scientific literature</div>
+      </div>
+      <div class="stat-card green">
+        <div class="label">Targets predicted</div>
+        <div class="value">3</div>
+        <div class="sub">PC · STH · H₂</div>
+      </div>
+      <div class="stat-card yellow">
+        <div class="label">Best model R²</div>
+        <div class="value" id="best-r2">—</div>
+        <div class="sub">STH target</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Quick Predict</h2>
+      <p style="margin-bottom:16px">Enter key parameters and click Predict to see all three outputs immediately.</p>
+      <div class="form-grid">
+        <div class="field">
+          <label>Material</label>
+          <select id="q-material">
+            <option>BiVO4</option><option>TiO2</option><option>Fe2O3</option>
+            <option>GaN</option><option>Cu2O</option><option>ZnO</option>
+            <option>g-C3N4</option><option>CdS</option><option>WO3</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Electrolyte</label>
+          <select id="q-electrolyte">
+            <option>KOH</option><option>NaOH</option><option>Na2SO4</option>
+            <option>H2SO4</option><option>PBS</option><option>KPi</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>pH</label>
+          <input id="q-ph" type="number" value="7" min="0" max="14" step="0.1" />
+        </div>
+        <div class="field">
+          <label>Bias (V vs RHE)</label>
+          <input id="q-bias" type="number" value="1.23" min="-2" max="5" step="0.01" />
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="quick-btn" onclick="quickPredict()">Predict</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Predict -->
+  <div id="page-predict" class="page">
+    <div class="card">
+      <h2>Full Prediction Form</h2>
+      <p style="margin-bottom:20px">All parameters — unset optional fields use training-data defaults.</p>
+
+      <div class="form-grid">
+        <div class="field">
+          <label>Material *</label>
+          <select name="material" onchange="syncForm(this)">
+            <option>BiVO4</option><option>TiO2</option><option>Fe2O3</option>
+            <option>GaN</option><option>Cu2O</option><option>ZnO</option>
+            <option>g-C3N4</option><option>CdS</option><option>WO3</option>
+            <option>Silicon</option><option>InGaN</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Electrolyte *</label>
+          <select name="electrolyte" onchange="syncForm(this)">
+            <option>KOH</option><option>NaOH</option><option>Na2SO4</option>
+            <option>H2SO4</option><option>PBS</option><option>KPi</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>pH *</label>
+          <input name="ph" type="number" value="7" min="0" max="14" step="0.1" onchange="syncForm(this)" />
+        </div>
+        <div class="field">
+          <label>Bias (V vs RHE) *</label>
+          <input name="bias" type="number" value="1.23" min="-2" max="5" step="0.01" onchange="syncForm(this)" />
+        </div>
+        <div class="field">
+          <label>Light Source</label>
+          <select name="light_source" onchange="syncForm(this)">
+            <option>AM 1.5G</option><option>simulated solar light</option>
+            <option>visible light</option><option>UV light</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Bandgap (eV)</label>
+          <input name="bandgap" type="number" value="2.4" min="0.5" max="6" step="0.01" onchange="syncForm(this)" />
+        </div>
+        <div class="field">
+          <label>Temperature (K)</label>
+          <input name="temperature" type="number" value="298" min="200" max="1500" onchange="syncForm(this)" />
+        </div>
+        <div class="field">
+          <label>Light Intensity (mW/cm²)</label>
+          <input name="light_intensity" type="number" value="100" min="0" max="2000" onchange="syncForm(this)" />
+        </div>
+        <div class="field">
+          <label>Thickness (nm)</label>
+          <input name="thickness" type="number" value="300" min="0" max="100000" onchange="syncForm(this)" />
+        </div>
+        <div class="field">
+          <label>Cocatalyst</label>
+          <select name="cocatalyst" onchange="syncForm(this)">
+            <option value="">None</option><option>Pt</option><option>NiOx</option>
+            <option>CoOx</option><option>RuO2</option><option>IrO2</option>
+            <option>NiOOH</option><option>NiFe</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Morphology</label>
+          <select name="morphology" onchange="syncForm(this)">
+            <option>Nanorods</option><option>Nanoparticles</option>
+            <option>Thin Film</option><option>Nanowires</option>
+            <option>Nanotube</option><option>Nanosheet</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Nanostructure</label>
+          <select name="nanostructure" onchange="syncForm(this)">
+            <option>Nanorod</option><option>Nanoparticle</option>
+            <option>Thin Film</option><option>Nanowire</option>
+            <option>Nanotube</option><option>Heterojunction</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="predict-btn" onclick="runPredict()">⚡ Run Prediction</button>
+        <button class="btn btn-secondary" onclick="resetForm()">Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="page-results" class="page">
+    <div id="no-results" class="card">
+      <h2>No prediction yet</h2>
+      <p>Go to <strong>Predict</strong> and run a prediction first.</p>
+    </div>
+
+    <div id="results-content" style="display:none">
+      <div class="result-grid">
+        <div class="result-card">
+          <div class="r-label">Photocurrent Density</div>
+          <div class="r-value" id="r-pc">—</div>
+          <div class="r-unit">mA/cm²</div>
+        </div>
+        <div class="result-card sth">
+          <div class="r-label">STH Efficiency</div>
+          <div class="r-value" id="r-sth">—</div>
+          <div class="r-unit">%</div>
+        </div>
+        <div class="result-card h2">
+          <div class="r-label">H₂ Evolution Rate</div>
+          <div class="r-value" id="r-h2">—</div>
+          <div class="r-unit">µmol/h/cm²</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Performance</h2>
+        <p id="r-perf-label" style="margin-bottom:8px"></p>
+        <div class="perf-bar-wrap">
+          <div class="perf-track">
+            <div class="perf-fill" id="r-perf-bar" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Input Summary</h2>
+        <div id="r-inputs" style="font-size:13px;color:var(--muted);line-height:2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- About -->
+  <div id="page-about" class="page">
+    <div class="card">
+      <h2>About PEC-ML</h2>
+      <p>Diploma thesis — Photoelectrochemical water splitting prediction using machine learning.</p>
+    </div>
+
+    <div class="card">
+      <div class="about-section">
+        <h3>Prediction Targets</h3>
+        <ul>
+          <li><strong>Photocurrent Density</strong> — mA/cm² — 410 training samples</li>
+          <li><strong>STH Efficiency</strong> — % — 48 training samples</li>
+          <li><strong>H₂ Evolution Rate</strong> — µmol/h/cm² — 57 training samples</li>
+        </ul>
+      </div>
+      <div class="about-section">
+        <h3>Features Used</h3>
+        <ul>
+          <li>Numeric: bandgap, pH, temperature, bias, light intensity, thickness + 8 engineered</li>
+          <li>Categorical: material, electrolyte, synthesis method, photoelectrode type, nanostructure, morphology</li>
+        </ul>
+      </div>
+      <div class="about-section">
+        <h3>Anti-Leakage</h3>
+        <ul>
+          <li>Photocurrent is excluded from STH model features (STH ≈ J·1.23/P — physics leakage)</li>
+          <li>log1p transform applied to H₂ (right-skewed distribution)</li>
+        </ul>
+      </div>
+      <div class="about-section">
+        <h3>Model Performance (3-fold CV)</h3>
+        <table class="metric-table">
+          <thead><tr><th>Target</th><th>Model</th><th>R²</th></tr></thead>
+          <tbody id="about-metrics"><tr><td colspan="3" style="color:var(--muted)">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  const API = "http://localhost:5001";
+
+  // ── form state ────────────────────────────────────────────────────────────
+  const formData = {
+    material: "BiVO4",
+    electrolyte: "KOH",
+    ph: 7,
+    bias: 1.23,
+    light_source: "AM 1.5G",
+    bandgap: 2.4,
+    temperature: 298,
+    light_intensity: 100,
+    thickness: 300,
+    cocatalyst: "",
+    morphology: "Nanorods",
+    nanostructure: "Nanorod",
+  };
+
+  function syncForm(el) {
+    formData[el.name] = el.value;
+  }
+
+  function resetForm() {
+    const defaults = {
+      material:"BiVO4", electrolyte:"KOH", ph:7, bias:1.23,
+      light_source:"AM 1.5G", bandgap:2.4, temperature:298,
+      light_intensity:100, thickness:300, cocatalyst:"", morphology:"Nanorods", nanostructure:"Nanorod",
+    };
+    Object.assign(formData, defaults);
+    document.querySelectorAll("#page-predict [name]").forEach(el => {
+      if (el.name in defaults) el.value = defaults[el.name];
+    });
+    hideError();
+  }
+
+  // ── navigation ────────────────────────────────────────────────────────────
+  function showPage(id, btn) {
+    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+    document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+    document.getElementById("page-" + id).classList.add("active");
+    if (btn) btn.classList.add("active");
+    hideError();
+  }
+
+  // ── error ─────────────────────────────────────────────────────────────────
+  function showError(msg, details) {
+    const el = document.getElementById("error-banner");
+    let html = `<strong>Error:</strong> ${msg}`;
+    if (details && details.length) {
+      html += "<ul style='margin-top:8px;padding-left:16px'>" +
+        details.map(d => `<li>${d}</li>`).join("") + "</ul>";
+    }
+    el.innerHTML = html;
+    el.style.display = "block";
+  }
+  function hideError() {
+    document.getElementById("error-banner").style.display = "none";
+  }
+
+  // ── prediction call ───────────────────────────────────────────────────────
+  async function callPredict(payload) {
+    const res = await fetch(`${API}/predict`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok || data.status === "error") {
+      throw { message: data.message || "Prediction failed", details: data.details };
+    }
+    return data;
+  }
+
+  function showResults(data, inputs) {
+    const fmt = v => v !== null && v !== undefined ? Number(v).toFixed(3) : "N/A";
+    document.getElementById("r-pc").textContent  = fmt(data.Photocurrent);
+    document.getElementById("r-sth").textContent = fmt(data.STH);
+    document.getElementById("r-h2").textContent  = fmt(data.H2);
+
+    const pc = data.Photocurrent || 0;
+    const pct = Math.min(100, Math.max(5, pc * 10));
+    document.getElementById("r-perf-bar").style.width = pct + "%";
+    document.getElementById("r-perf-label").textContent =
+      `Performance class: ${data.performance_class}  |  Photocurrent: ${fmt(pc)} mA/cm²`;
+
+    const inputsEl = document.getElementById("r-inputs");
+    inputsEl.innerHTML = Object.entries(inputs)
+      .filter(([,v]) => v !== "" && v !== null && v !== undefined)
+      .map(([k,v]) => `<span style="margin-right:24px"><strong>${k}:</strong> ${v}</span>`)
+      .join("");
+
+    document.getElementById("no-results").style.display = "none";
+    document.getElementById("results-content").style.display = "block";
+  }
+
+  // ── quick predict (dashboard) ─────────────────────────────────────────────
+  async function quickPredict() {
+    const btn = document.getElementById("quick-btn");
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Predicting…';
+    hideError();
+    try {
+      const payload = {
+        material:    document.getElementById("q-material").value,
+        electrolyte: document.getElementById("q-electrolyte").value,
+        pH:          parseFloat(document.getElementById("q-ph").value),
+        bias:        parseFloat(document.getElementById("q-bias").value),
+        light_source:"AM 1.5G",
+      };
+      const data = await callPredict(payload);
+      showResults(data, payload);
+      // switch to results tab
+      showPage("results", document.querySelectorAll(".nav-btn")[2]);
+    } catch(e) {
+      showError(e.message || String(e), e.details);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Predict";
+    }
+  }
+
+  // ── full predict ──────────────────────────────────────────────────────────
+  async function runPredict() {
+    const btn = document.getElementById("predict-btn");
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Predicting…';
+    hideError();
+    try {
+      const payload = { ...formData };
+      // convert numeric strings
+      ["ph","bias","bandgap","temperature","light_intensity","thickness"].forEach(k => {
+        if (payload[k] !== "" && payload[k] !== null) payload[k] = parseFloat(payload[k]);
+      });
+      const data = await callPredict(payload);
+      showResults(data, payload);
+      showPage("results", document.querySelectorAll(".nav-btn")[2]);
+    } catch(e) {
+      showError(e.message || String(e), e.details);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = "⚡ Run Prediction";
+    }
+  }
+
+  // ── load model info for About page ───────────────────────────────────────
+  async function loadHealth() {
+    try {
+      const res = await fetch(`${API}/`);
+      const data = await res.json();
+      // Update best R² on dashboard — placeholder, real values from training
+      document.getElementById("best-r2").textContent = "0.29";
+
+      // Build metrics table from known CV results
+      const metrics = [
+        { target:"Photocurrent", model:"RandomForest", r2:"0.002" },
+        { target:"STH",          model:"RandomForest", r2:"0.287" },
+        { target:"H₂",           model:"RandomForest", r2:"0.085" },
+      ];
+      document.getElementById("about-metrics").innerHTML = metrics.map(m =>
+        `<tr><td>${m.target}</td><td>${m.model}</td><td>${m.r2}</td></tr>`
+      ).join("");
+    } catch(e) {
+      document.getElementById("about-metrics").innerHTML =
+        `<tr><td colspan="3" style="color:#f85149">Backend not running — start with: python app.py</td></tr>`;
+    }
+  }
+
+  loadHealth();
+</script>
+</body>
+</html>
