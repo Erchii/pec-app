@@ -220,15 +220,15 @@ export default function App() {
   };
 
   const displayedPhotocurrent = backendResult
-    ? (backendResult.Photocurrent ?? 0)
+    ? (backendResult.Photocurrent?.value ?? 0)
     : 0;
 
   const displayedSTH = backendResult
-    ? (backendResult.STH ?? 0)
+    ? (backendResult.STH?.value ?? 0)
     : 0;
 
   const displayedH2 = backendResult
-    ? (backendResult.H2 ?? 0)
+    ? (backendResult.H2?.value ?? 0)
     : 0;
 
   const performanceClass = backendResult
