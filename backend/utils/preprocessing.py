@@ -25,12 +25,12 @@ COLUMN_MAP = {
     "Electrolyte":                                 "electrolyte",
     "pH":                                          "ph",
     "Illumination Type":                           "illumination_type",
-    "Light Intensity (mW/cm\u00b2)":               "light_intensity",
+    "Light Intensity (mW/cm²)":               "light_intensity",
     "Applied Bias (V vs RHE)":                     "bias",
     "Temperature (K)":                             "temperature_k",
-    "Photocurrent Density (mA/cm\u00b2)":          "photocurrent",
+    "Photocurrent Density (mA/cm²)":          "photocurrent",
     "STH Efficiency (%)":                          "sth",
-    "Hydrogen Evolution Rate (\u00b5mol h\u207b\u00b9 cm\u207b\u00b2)": "h2",
+    "Hydrogen Evolution Rate (µmol h⁻¹ cm⁻²)": "h2",
 }
 
 # Internal target names
@@ -39,9 +39,12 @@ TARGETS = {"pc": "photocurrent", "sth": "sth", "h2": "h2"}
 # ── Feature lists (before OHE) ────────────────────────────────────────────────
 NUMERIC_FEATURES = [
     "bandgap", "ph", "temperature_k", "bias", "light_intensity", "thickness",
-    # engineered
+    # base engineered
     "photon_energy", "overpotential_proxy", "bandgap_sq", "log_bandgap",
     "ph_deviation", "bias_positive", "has_cocatalyst", "is_nanostructured",
+    # interaction & extended physics features
+    "ionic_strength_proxy", "temp_normalized",
+    "bandgap_x_ph", "bias_x_ionic", "bg_x_overpot", "ph_x_temp",
 ]
 
 CATEGORICAL_FEATURES = [
@@ -55,6 +58,16 @@ TARGET_EXCLUSIONS = {
     "sth": ["photocurrent"],   # STH ≈ Jph × const → exclude to avoid leakage
     "h2":  [],
 }
+
+# Ionic strength proxy by electrolyte name (strong acid/base = 1.0, buffer = 0.5)
+_ELECTROLYTE_ION = {
+    "koh": 1.0, "naoh": 1.0, "h2so4": 1.0,
+    "hcl": 1.0, "hno3": 1.0,
+    "pbs": 0.5, "kpi": 0.5, "phosphate buffer": 0.5,
+    "na2so4": 0.6, "k2so4": 0.6,
+    "na2hpo4": 0.5, "khco3": 0.4,
+}
+
 
 # ── Numeric parsing ───────────────────────────────────────────────────────────
 
@@ -96,10 +109,10 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
             df[col] = parse_numeric(df[col])
 
     bounds = {
-        "bandgap":      (0.5, 6.0),
-        "ph":           (0.0, 14.0),
-        "sth":          (0.0, 100.0),
-        "temperature_k":(200.0, 1500.0),
+        "bandgap":       (0.5, 6.0),
+        "ph":            (0.0, 14.0),
+        "sth":           (0.0, 100.0),
+        "temperature_k": (200.0, 1500.0),
     }
     for col, (lo, hi) in bounds.items():
         if col in df.columns:
@@ -118,16 +131,21 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     """Add physics-informed features. All new columns are numeric."""
     df = df.copy()
 
-    bg   = df.get("bandgap",   pd.Series(np.nan, index=df.index))
-    bias = df.get("bias",      pd.Series(np.nan, index=df.index))
-    ph   = df.get("ph",        pd.Series(np.nan, index=df.index))
+    bg   = df.get("bandgap",      pd.Series(np.nan, index=df.index))
+    bias = df.get("bias",         pd.Series(np.nan, index=df.index))
+    ph   = df.get("ph",           pd.Series(np.nan, index=df.index))
+    temp = df.get("temperature_k", pd.Series(np.nan, index=df.index))
 
+    # ── Base physics ─────────────────────────────────────────────────────────
     df["photon_energy"]       = np.where(bg > 0, 1240.0 / bg.clip(lower=0.1), np.nan)
     df["overpotential_proxy"] = bias - (bg.clip(lower=0.5) - 1.23)
     df["bandgap_sq"]          = bg ** 2
     df["log_bandgap"]         = np.log1p(bg.clip(lower=0))
     df["ph_deviation"]        = (ph - 7.0).abs()
     df["bias_positive"]       = bias.clip(lower=0)
+
+    # temp_normalized: deviation from room temperature (298 K) in kelvin units
+    df["temp_normalized"] = (temp - 298.0) / 298.0
 
     _no_cocatalyst = {"none", "not reported", "nan", ""}
     if "cocatalyst" in df.columns:
@@ -140,6 +158,31 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
         df["is_nanostructured"] = (
             ~df["nanostructure"].fillna("thin film").str.strip().str.lower().isin(_no_nano)
         ).astype(float)
+
+    # ── Ionic strength proxy from electrolyte name ────────────────────────────
+    if "electrolyte" in df.columns:
+        def _ion_strength(name: str) -> float:
+            name_lc = str(name).strip().lower()
+            for key, val in _ELECTROLYTE_ION.items():
+                if key in name_lc:
+                    return val
+            return 0.3  # unknown default
+
+        ionic = df["electrolyte"].apply(_ion_strength)
+    else:
+        ionic = pd.Series(0.3, index=df.index)
+    df["ionic_strength_proxy"] = ionic
+
+    # ── Interaction features ──────────────────────────────────────────────────
+    # pH × bandgap: flat-band potential shift scales with both
+    df["bandgap_x_ph"]  = bg * ph
+    # bias × ionic: electric field enhancement in the double layer
+    df["bias_x_ionic"]  = bias * ionic
+    # bandgap × overpotential: combined thermodynamic driving force
+    overpot = df["overpotential_proxy"]
+    df["bg_x_overpot"]  = bg * overpot
+    # pH × temperature: Arrhenius-like reaction kinetics
+    df["ph_x_temp"]     = ph * temp
 
     return df
 
@@ -186,7 +229,6 @@ def add_source_columns(df: pd.DataFrame) -> pd.DataFrame:
     Add source_url and source_verified columns.
     source_url  = https://doi.org/{doi}  when DOI is available, else NaN.
     source_verified = 0 (not programmatically verified; requires manual review).
-    We never hallucinate data — values stay NaN when DOI is missing.
     """
     df = df.copy()
     if "doi" in df.columns:

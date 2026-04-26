@@ -1,0 +1,89 @@
+\chapter{API Specification and Usage Examples}\label{app:B}
+
+\section{REST API Reference}
+
+\subsection{Health Check}
+
+\begin{lstlisting}[language=,caption={\texttt{GET /} response example}]
+GET http://localhost:5001/
+
+{
+  "status": "ok",
+  "models_loaded": ["pc", "sth", "h2"],
+  "models_missing": [],
+  "model_info": {
+    "pc":  {"best_model": "XGBoost", "cv_r2": 0.454},
+    "sth": {"best_model": "XGBoost", "cv_r2": 0.533},
+    "h2":  {"best_model": "XGBoost", "cv_r2": 0.366}
+  }
+}
+\end{lstlisting}
+
+\subsection{Prediction Endpoint}
+
+\begin{lstlisting}[language=,caption={\texttt{POST /predict} request and response}]
+POST http://localhost:5001/predict
+
+Request:
+{
+  "material":     "BiVO4",
+  "electrolyte":  "0.5 M Na2SO4",
+  "pH":           6.8,
+  "bias":         1.23,
+  "bandgap":      2.4,
+  "light_source": "AM 1.5G",
+  "cocatalyst":   "FeOOH",
+  "nanostructure":"nanoparticle"
+}
+
+Response:
+{
+  "status": "ok",
+  "Photocurrent": {"value": 3.215, "confidence": 0.44, "std": 0.312},
+  "STH":          {"value": 1.98,  "confidence": 0.51, "std": 0.201},
+  "H2":           {"value": 42.7,  "confidence": 0.39, "std": 5.81},
+  "performance_class": "MEDIUM",
+  "performance_score": 48.2,
+  "units": {
+    "Photocurrent": "mA/cm2",
+    "STH": "%",
+    "H2": "umol/h/cm2"
+  }
+}
+\end{lstlisting}
+
+\section{Running the Application}
+
+\begin{lstlisting}[language=bash,caption={Setup and launch instructions}]
+# 1. Install dependencies
+pip install flask flask-cors pandas numpy scikit-learn xgboost joblib
+
+# 2. Augment dataset
+python expand_dataset.py
+
+# 3. Train models on augmented dataset
+cd backend
+python train.py --data data/pec_dataset.csv --cv 5
+
+# 4. Start API server (http://localhost:5001)
+python app.py
+\end{lstlisting}
+
+\section{Dataset Augmentation Output}
+
+\begin{lstlisting}[language=,caption={expand\_dataset.py console output}]
+[1/4] Loading pec_dataset.csv  -- 529 rows x 30 cols
+[2/4] Filling existing rows with physics estimates...
+  Filled bandgap:         204
+  Filled pH:              114
+  Filled temperature:     420
+  Filled light intensity:  61
+  Estimated STH:          361
+  Estimated H2:           357
+[3/4] Generating synthetic rows -- 147 rows
+[4/4] Total rows: 676
+  STH filled:  556 (82%)
+  H2 filled:   559 (83%)
+  Bandgap:     609 (90%)
+  Data_Source: estimated=516 / synthetic=147 / original=13
+\end{lstlisting}

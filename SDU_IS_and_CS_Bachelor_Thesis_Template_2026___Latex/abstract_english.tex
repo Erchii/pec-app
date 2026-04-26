@@ -1,0 +1,42 @@
+\newpage
+\pagestyle{plain}
+
+\begin{center}
+    \Large
+    \textbf{Abstract}
+\end{center}
+
+\vspace{0.5cm}
+
+Photoelectrochemical (PEC) water splitting is one of the most promising pathways for
+solar hydrogen production, but the experimental search for high-performance
+photoelectrode materials is slow and resource-intensive.
+This work presents a full-stack machine learning system that predicts three key
+performance metrics of PEC cells — Photocurrent Density (mA/cm\textsuperscript{2}),
+Solar-to-Hydrogen (STH) efficiency (\%), and Hydrogen Evolution Rate
+($\mu$mol\,h\textsuperscript{-1}\,cm\textsuperscript{-2}) — directly from
+material and experimental parameters.
+
+A curated dataset of 676 entries was assembled from 529 published experimental
+results, augmented with physics-derived estimates and literature-based synthetic
+rows to address severe class imbalance in STH and H\textsubscript{2} targets.
+Twenty physics-informed features were engineered from raw inputs, including
+bandgap--pH interaction, overpotential proxy, ionic strength proxy, and
+Arrhenius-like temperature--pH kinetics terms.
+
+An ensemble of XGBoost and Random Forest regressors is trained per target, with
+hyperparameter selection via randomised search and generalisation measured by
+5-fold cross-validation.
+Best cross-validated R\textsuperscript{2} scores are 0.454 for Photocurrent,
+0.533 for STH, and 0.366 for H\textsubscript{2} — compared to 0.065, 0.278,
+and $-$0.090 before dataset augmentation.
+
+A REST API (Flask) and single-page web interface expose the models for
+interactive prediction, returning per-target values, model agreement scores,
+and a composite performance classification (LOW / MEDIUM / HIGH) calibrated to
+the training distribution.
+
+\vspace{0.5cm}
+\noindent\textbf{Keywords:} photoelectrochemical water splitting, machine learning,
+XGBoost, Random Forest, hydrogen production, solar energy, materials informatics,
+feature engineering, ensemble learning.

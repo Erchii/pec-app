@@ -587,16 +587,28 @@
   }
 
   function showResults(data, inputs) {
-    const fmt = v => v !== null && v !== undefined ? Number(v).toFixed(3) : "N/A";
-    document.getElementById("r-pc").textContent  = fmt(data.Photocurrent);
-    document.getElementById("r-sth").textContent = fmt(data.STH);
-    document.getElementById("r-h2").textContent  = fmt(data.H2);
+    // data.Photocurrent / STH / H2 are now objects: {value, confidence, std}
+    const val  = r => r && r.value      !== undefined ? r.value      : (r ?? null);
+    const conf = r => r && r.confidence !== undefined ? r.confidence : null;
+    const fmt  = v => v !== null && v !== undefined ? Number(v).toFixed(3) : "N/A";
+    const fmtC = c => c !== null && c !== undefined ? (c * 100).toFixed(0) + "%" : "";
 
-    const pc = data.Photocurrent || 0;
-    const pct = Math.min(100, Math.max(5, pc * 10));
-    document.getElementById("r-perf-bar").style.width = pct + "%";
+    const pcVal  = val(data.Photocurrent);
+    const sthVal = val(data.STH);
+    const h2Val  = val(data.H2);
+    const pcConf = conf(data.Photocurrent);
+
+    document.getElementById("r-pc").textContent  = fmt(pcVal);
+    document.getElementById("r-sth").textContent = fmt(sthVal);
+    document.getElementById("r-h2").textContent  = fmt(h2Val);
+
+    // Performance bar uses the composite score (0–100) from the API
+    const score = data.performance_score ?? Math.min(100, Math.max(5, (pcVal || 0) * 10));
+    document.getElementById("r-perf-bar").style.width = score + "%";
+
+    const confStr = pcConf !== null ? `  |  Model confidence: ${fmtC(pcConf)}` : "";
     document.getElementById("r-perf-label").textContent =
-      `Performance class: ${data.performance_class}  |  Photocurrent: ${fmt(pc)} mA/cm²`;
+      `Performance: ${data.performance_class}  |  Score: ${score.toFixed(1)}/100${confStr}`;
 
     const inputsEl = document.getElementById("r-inputs");
     inputsEl.innerHTML = Object.entries(inputs)
@@ -662,15 +674,20 @@
     try {
       const res = await fetch(`${API}/`);
       const data = await res.json();
-      // Update best R² on dashboard — placeholder, real values from training
-      document.getElementById("best-r2").textContent = "0.29";
+      const info = data.model_info || {};
 
-      // Build metrics table from known CV results
-      const metrics = [
-        { target:"Photocurrent", model:"RandomForest", r2:"0.002" },
-        { target:"STH",          model:"RandomForest", r2:"0.287" },
-        { target:"H₂",           model:"RandomForest", r2:"0.085" },
-      ];
+      // Best R² across all targets (from real training)
+      const r2vals = Object.values(info).map(m => m.cv_r2).filter(v => v != null);
+      const bestR2 = r2vals.length ? Math.max(...r2vals).toFixed(3) : "—";
+      document.getElementById("best-r2").textContent = bestR2;
+
+      // Build metrics table from live API response
+      const targetMap = { pc:"Photocurrent", sth:"STH", h2:"H₂" };
+      const metrics = Object.entries(info).map(([key, m]) => ({
+        target: targetMap[key] || key,
+        model:  m.best_model,
+        r2:     m.cv_r2 != null ? m.cv_r2.toFixed(3) : "—",
+      }));
       document.getElementById("about-metrics").innerHTML = metrics.map(m =>
         `<tr><td>${m.target}</td><td>${m.model}</td><td>${m.r2}</td></tr>`
       ).join("");

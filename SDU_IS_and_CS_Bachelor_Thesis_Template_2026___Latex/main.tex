@@ -1,0 +1,67 @@
+\documentclass[a4paper,14pt]{extreport}
+
+\usepackage[T2A]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[russian,english]{babel}
+\usepackage{csquotes}
+
+\usepackage[left=30mm, right=10mm, top=20mm, bottom=20mm]{geometry}
+
+\usepackage{graphicx}
+\graphicspath{{figures/}}
+
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{longtable}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{caption}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  backgroundcolor=\color{gray!10},
+  keywordstyle=\color{blue},
+  commentstyle=\color{green!50!black},
+  stringstyle=\color{red!60!black},
+}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  citecolor=black,
+  urlcolor=blue,
+}
+
+\usepackage[style=numeric,sorting=none]{biblatex}
+\addbibresource{bibliography.bib}
+
+\def\myauthor{Issayev A.}
+\def\mycoach{Supervisor Name}
+\def\mytitle{Machine Learning--Based Prediction System for Photoelectrochemical Water Splitting Performance}
+\def\mydegree{Bachelor in Information Systems}
+\def\mydegreecode{6B070300}
+
+\begin{document}
+    \input{titlepage1}
+    \input{titlepage2}
+
+    \input{abstract_english}
+    \input{abstract_kazakh}
+    \input{abstract_russian}
+    \tableofcontents
+
+    \input{introduction}
+    \input{chapterA}
+    \input{chapterB}
+    \input{chapterC}
+    \input{conclusion}
+    \printbibliography[heading=bibintoc,title={References}]
+    \appendix
+    \input{appendixA}
+    \input{appendixB}
+\end{document}

@@ -1,0 +1,86 @@
+\chapter{Conclusion}\label{ch:concl}
+
+\section{Summary of Contributions}
+
+This work presented a complete machine learning system for predicting the
+performance of photoelectrochemical water-splitting devices.
+The main contributions are:
+
+\begin{enumerate}
+  \item \textbf{Curated and augmented PEC dataset.}
+        A dataset of 676 entries was assembled from 529 published experimental
+        results and extended through physics-based estimation of STH and
+        H\textsubscript{2} values from measured photocurrents (Faraday's law /
+        STH formula) and through 147 literature-anchored synthetic rows.
+        The augmentation increased STH coverage from 9\% to 82\% and
+        H\textsubscript{2} coverage from 11\% to 83\%.
+
+  \item \textbf{Physics-informed feature engineering.}
+        Twenty numerical features were engineered from eight raw inputs,
+        including interaction terms motivated by the Nernst equation
+        (bandgap $\times$ pH), Butler--Volmer kinetics (bias $\times$ ionic strength),
+        and Arrhenius-like thermal activation (pH $\times$ temperature).
+
+  \item \textbf{Ensemble ML pipeline with uncertainty quantification.}
+        XGBoost and Random Forest regressors are trained per target with
+        5-fold CV.
+        An ensemble inference strategy weights predictions by CV R\textsuperscript{2}
+        and computes a confidence score from model agreement (Equation~\ref{eq:confidence}).
+
+  \item \textbf{Data-driven performance classification.}
+        A composite score (Equation~\ref{eq:score}) calibrated to training
+        percentiles and modulated by model confidence replaces the previous
+        hardcoded threshold, enabling the HIGH class to be predicted for
+        genuinely exceptional inputs.
+
+  \item \textbf{Deployed full-stack application.}
+        A Flask REST API and single-page web interface expose the models
+        with real-time predictions, confidence scores, and interactive
+        dataset exploration.
+
+  \item \textbf{Measurable model improvement through augmentation.}
+        CV R\textsuperscript{2} improved from 0.065 to 0.454 for Photocurrent,
+        from 0.278 to 0.533 for STH, and from $-$0.090 to 0.366 for
+        H\textsubscript{2} after augmentation and feature expansion.
+\end{enumerate}
+
+\section{Limitations and Future Work}
+
+Several directions remain open for future investigation:
+
+\begin{itemize}
+  \item \textbf{Real data collection.}
+        The most impactful improvement would be expanding the number of
+        genuine experimental STH and H\textsubscript{2} measurements.
+        Scraping open-access papers with NLP-based table extraction tools
+        (e.g., GROBID, PaperScraper) could double the real dataset within
+        a semester.
+
+  \item \textbf{DFT-derived features.}
+        Incorporating computed properties (formation energy, effective masses,
+        dielectric constant) from databases such as the Materials Project
+        \cite{jain2013commentary} or AFLOW \cite{curtarolo2012aflow} would
+        add material-specific information not captured by composition alone.
+
+  \item \textbf{Advanced models.}
+        For datasets exceeding 2000 entries, Bayesian neural networks or
+        deep ensembles with Monte Carlo dropout would provide calibrated
+        uncertainty intervals.
+        Graph neural networks acting on crystal structures are a longer-term
+        option when structural data becomes available.
+
+  \item \textbf{Multi-target learning.}
+        A joint model predicting $J_{ph}$, STH, and HER simultaneously
+        could exploit the correlations between targets and reduce
+        data requirements.
+
+  \item \textbf{Active learning loop.}
+        The confidence score could drive an active learning workflow,
+        identifying which experimental configurations would most reduce
+        model uncertainty and recommending them to researchers.
+\end{itemize}
+
+Despite its current limitations, the system provides a practical and
+immediately usable tool for accelerating the pre-screening of PEC
+photoelectrode candidates, reducing the number of synthesise-and-test
+iterations required before finding high-efficiency configurations.

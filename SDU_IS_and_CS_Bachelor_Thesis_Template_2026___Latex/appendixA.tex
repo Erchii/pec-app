@@ -1,0 +1,65 @@
+\chapter{Feature Importance and Model Outputs}\label{app:A}
+
+\section{XGBoost Feature Importances}
+
+After training on the augmented dataset, the XGBoost model for Photocurrent
+assigns the following top-15 feature importance scores (mean impurity decrease,
+normalised to sum to 1.0):
+
+\begin{table}[h]
+\centering
+\caption{Top-15 XGBoost feature importances for Photocurrent Density prediction.}
+\label{tab:feat_importance_pc}
+\begin{tabular}{clr}
+\toprule
+Rank & Feature & Importance \\
+\midrule
+1  & bandgap                        & 0.142 \\
+2  & bias\_positive                 & 0.117 \\
+3  & is\_nanostructured             & 0.089 \\
+4  & ph\_x\_temp                    & 0.078 \\
+5  & bg\_x\_overpot                 & 0.071 \\
+6  & overpotential\_proxy           & 0.065 \\
+7  & has\_cocatalyst                & 0.058 \\
+8  & photon\_energy                 & 0.052 \\
+9  & bandgap\_x\_ph                 & 0.049 \\
+10 & light\_intensity               & 0.045 \\
+11 & ionic\_strength\_proxy         & 0.038 \\
+12 & bias\_x\_ionic                 & 0.033 \\
+13 & ph                             & 0.031 \\
+14 & bandgap\_sq                    & 0.028 \\
+15 & material\_BiVO4                & 0.024 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Training Output Log (Excerpt)}
+
+The following is an excerpt from the \texttt{train.py} output after augmentation:
+
+\begin{lstlisting}[language=,caption={Training log output}]
+[INFO] [4/4] Training models...
+[INFO]   [PC] Removed 33 photocathode rows
+
+[INFO] Target: photocurrent  (521 valid rows)
+[INFO]   Features: 20 numeric + 6 categorical
+[INFO]   Using 5-fold CV
+[INFO]   XGBoost       R2=+0.454 +/- 0.305  MAE=2.9657
+[INFO]   RandomForest  R2=+0.292 +/- 0.138  MAE=3.4954
+[INFO]   Best: XGBoost  (CV R2=+0.454)
+[INFO]   Thresholds — high>=4.000  medium>=1.580
+
+[INFO] Target: sth  (556 valid rows)
+[INFO]   Features: 20 numeric + 6 categorical
+[INFO]   XGBoost       R2=+0.533 +/- 0.178  MAE=2.2954
+[INFO]   RandomForest  R2=+0.355 +/- 0.079  MAE=2.8837
+[INFO]   Best: XGBoost  (CV R2=+0.533)
+[INFO]   Thresholds — high>=3.722  medium>=1.365
+
+[INFO] Target: h2  (559 valid rows)
+[INFO]   Features: 20 numeric + 6 categorical
+[INFO]   XGBoost       R2=+0.366 +/- 0.099  MAE=0.7285
+[INFO]   RandomForest  R2=+0.221 +/- 0.032  MAE=0.8631
+[INFO]   Best: XGBoost  (CV R2=+0.366)
+[INFO]   Thresholds — high>=61.205  medium>=22.186
+\end{lstlisting}

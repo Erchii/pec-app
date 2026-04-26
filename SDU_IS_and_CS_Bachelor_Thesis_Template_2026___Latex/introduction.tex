@@ -1,0 +1,101 @@
+\chapter{Introduction}\label{ch:intro}
+
+\section{Problem Background}
+
+The global transition away from fossil fuels requires scalable, carbon-free energy
+carriers. Molecular hydrogen (H\textsubscript{2}) is widely regarded as one of the
+most attractive options because it has the highest gravimetric energy density of any
+known fuel (120 MJ/kg), produces only water upon combustion, and can be stored and
+transported using existing infrastructure \cite{turner2004sustainable}.
+Currently, however, more than 95\% of hydrogen is produced by steam methane
+reforming~— a process that emits roughly 10 kg of CO\textsubscript{2} per
+kilogram of H\textsubscript{2} \cite{crabtree2004hydrogen}.
+
+Photoelectrochemical (PEC) water splitting offers a pathway to produce green hydrogen
+directly from sunlight and water using a semiconductor photoelectrode immersed in an
+aqueous electrolyte \cite{fujishima1972electrochemical}.
+When photons with energy exceeding the semiconductor bandgap are absorbed, they
+generate electron--hole pairs.
+The holes oxidise water at the photoanode (oxygen evolution reaction, OER), while
+the electrons reduce protons at the cathode (hydrogen evolution reaction, HER),
+as described by:
+
+\begin{align}
+  &\text{Anode (OER):}\quad 2\,\text{H}_2\text{O} \;\xrightarrow{h\nu}\; \text{O}_2 + 4\,\text{H}^+ + 4e^- \\
+  &\text{Cathode (HER):}\quad 4\,\text{H}^+ + 4e^- \;\to\; 2\,\text{H}_2
+\end{align}
+
+The efficiency of this process is characterised by the Solar-to-Hydrogen (STH)
+efficiency, defined as:
+\begin{equation}
+  \text{STH} = \frac{J_{ph} \times 1.23\,\text{V} \times \eta_F}{P_{in}} \times 100\%
+  \label{eq:sth}
+\end{equation}
+where $J_{ph}$ is the photocurrent density (mA/cm\textsuperscript{2}),
+1.23\,V is the thermodynamic minimum potential for water splitting,
+$\eta_F$ is Faradaic efficiency, and
+$P_{in}$ is the incident light power density (mW/cm\textsuperscript{2}).
+
+Despite decades of research, only a handful of materials approach the theoretical
+STH ceiling for their bandgap~\cite{walter2010solar}.
+The search space is enormous: performance depends on the semiconductor bandgap,
+nanostructure, doping, cocatalyst, electrolyte composition, pH, applied bias,
+illumination conditions, and synthesis method.
+A researcher must vary all of these simultaneously, making purely experimental
+optimisation prohibitively slow.
+
+\section{Motivation and Relevance}
+
+The rise of materials informatics~\cite{ramprasad2017machine} has demonstrated
+that machine learning (ML) models trained on published experimental data can
+predict material properties orders of magnitude faster than density functional
+theory (DFT) calculations or physical experiments.
+Several recent studies have applied ML to heterogeneous catalysis
+\cite{goldsmith2018machine}, battery electrolytes, and photovoltaics,
+but the PEC water-splitting domain remains sparsely covered.
+
+The main barrier is data scarcity: PEC papers typically report only a few
+performance metrics, and no large, unified, open-access dataset exists.
+This work addresses that gap by curating and augmenting a dataset from 529
+published papers, then deploying ML models through a web application that
+allows researchers to predict expected performance before committing to
+synthesis.
+
+\section{Aims and Objectives}
+
+The aim of this project is to design, implement, and evaluate a machine
+learning--based system for predicting the performance of photoelectrochemical
+water-splitting devices.
+
+\noindent The specific objectives are:
+
+\begin{enumerate}
+  \item Curate a structured dataset from published PEC literature covering
+        material, structural, and operational parameters alongside measured
+        performance metrics.
+  \item Develop a physics-informed feature engineering pipeline that encodes
+        domain knowledge (bandgap--pH interaction, overpotential, ionic
+        strength, Faraday-derived H\textsubscript{2} rates) into ML-ready
+        features.
+  \item Implement and evaluate an ensemble of gradient-boosted and
+        random-forest regressors with nested cross-validation, targeting
+        three performance indicators: Photocurrent Density, STH Efficiency,
+        and Hydrogen Evolution Rate.
+  \item Deploy the trained models as a REST API and interactive web
+        application with uncertainty-aware output (confidence score,
+        model agreement).
+  \item Validate that data augmentation via physics-derived estimates
+        measurably improves model generalisation compared to the raw sparse
+        dataset.
+\end{enumerate}
+
+\section{Structure of the Report}
+
+Chapter~\ref{ch:A} reviews related work in PEC materials science and ML
+for materials discovery.
+Chapter~\ref{ch:B} describes the dataset, feature engineering, model
+architecture, and system design.
+Chapter~\ref{ch:C} presents experimental results and discusses model
+performance.
+Chapter~\ref{ch:concl} concludes with a summary of contributions and
+directions for future work.
