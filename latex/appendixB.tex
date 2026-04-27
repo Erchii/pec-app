@@ -5,7 +5,7 @@
 \subsection{Health Check}
 
 \begin{lstlisting}[language=,caption={\texttt{GET /} response example}]
-GET http://localhost:5001/
+GET http://178.105.34.179/api/
 
 {
   "status": "ok",
@@ -22,7 +22,7 @@ GET http://localhost:5001/
 \subsection{Prediction Endpoint}
 
 \begin{lstlisting}[language=,caption={\texttt{POST /predict} request and response}]
-POST http://localhost:5001/predict
+POST http://178.105.34.179/api/predict
 
 Request:
 {
@@ -67,6 +67,9 @@ python train.py --data data/pec_dataset.csv --cv 5
 
 # 4. Start API server (http://localhost:5001)
 python app.py
+
+# The deployed application is accessible at:
+# http://178.105.34.179/
 \end{lstlisting}
 
 \section{Dataset Augmentation Output}
