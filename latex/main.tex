@@ -1,0 +1,114 @@
+\documentclass[a4paper,14pt]{extreport}
+
+%% Encoding & language
+\usepackage[T2A]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[russian,english]{babel}
+
+%% Page geometry (standard Kazakhstan diploma requirements)
+\usepackage[left=30mm, right=15mm, top=20mm, bottom=20mm]{geometry}
+
+%% Line spacing
+\usepackage{setspace}
+\onehalfspacing
+
+%% Math
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+%% Tables
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{longtable}
+\usepackage{tabularx}
+
+%% Graphics
+\usepackage{graphicx}
+\graphicspath{{figures/}}
+
+%% Colours & listings
+\usepackage{xcolor}
+\usepackage{listings}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  breakatwhitespace=false,
+  frame=single,
+  backgroundcolor=\color{gray!8},
+  keywordstyle=\color{blue!70!black},
+  commentstyle=\color{green!50!black},
+  stringstyle=\color{red!60!black},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  numbersep=8pt,
+  tabsize=2,
+  showstringspaces=false,
+  literate={--}{--}2 {>=}{>=}2 {<=}{<=}2,
+}
+
+%% Captions
+\usepackage{caption}
+\captionsetup{labelsep=period, font=small}
+
+%% Hyperlinks (load last among formatting packages)
+\usepackage[hidelinks]{hyperref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  citecolor=black,
+  urlcolor=blue!80!black,
+}
+
+%% Bibliography
+\usepackage[style=numeric,sorting=none,backend=biber]{biblatex}
+\addbibresource{bibliography.bib}
+
+%% Paragraph indentation (Russian academic style)
+\usepackage{indentfirst}
+\setlength{\parindent}{1.25cm}
+
+%% Section depth
+\setcounter{secnumdepth}{3}
+\setcounter{tocdepth}{3}
+
+%% Metadata
+\def\myauthor{Issayev Yerassyl, Ismailov Nurbakh}
+\def\mysupervisor{}
+\def\mytitle{Machine Learning-Based Prediction System for Photoelectrochemical Water Splitting Performance}
+\def\mydegree{Bachelor of Information Systems}
+\def\mydegreecode{6B06101}
+\def\myyear{2026}
+
+\begin{document}
+
+\pagestyle{empty}
+\input{titlepage1}
+\input{titlepage2}
+
+\pagestyle{plain}
+\setcounter{page}{3}
+
+\input{abstract_english}
+\input{abstract_kazakh}
+\input{abstract_russian}
+
+\tableofcontents
+\clearpage
+
+\pagestyle{plain}
+\input{introduction}
+\input{chapterA}
+\input{chapterB}
+\input{chapterC}
+\input{conclusion}
+
+\printbibliography[heading=bibintoc, title={References}]
+
+\appendix
+\renewcommand{\thechapter}{\Alph{chapter}}
+\input{appendixA}
+\input{appendixB}
+
+\end{document}

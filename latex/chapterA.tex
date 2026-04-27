@@ -1,0 +1,293 @@
+\chapter{Literature Review}\label{ch:A}
+
+\section{Photoelectrochemical Water Splitting: Fundamentals}
+
+\subsection{Semiconductor Photoelectrodes}
+
+The efficiency of that process is determined by several competing elements ---
+the amount of light absorbed by the material, the time it takes for minority
+charge carriers to reach the surface before they recombine, and the ability
+of the surface to catalyse the water oxidation reaction~\cite{gratzel2001photoelectrochemical}.
+
+For unassisted water splitting (i.e., no external voltage applied) there are
+a number of simultaneous requirements that the material must
+meet~\cite{bolton1978limiting}: the band gap should fall in approximately the
+range 1.8--2.2\,eV --- broad enough to generate sufficient thermodynamic driving
+forces for both half-reactions, but narrow enough to allow for absorption of a
+useable fraction of the solar spectrum.
+The band-edge positions must be positioned such as to bracket the water oxidation
+and reduction potentials.
+Finally, the material must remain chemically stable in the electrolyte under
+prolonged irradiation.
+Thus far, there exists no single known material that meets all of the above
+criteria simultaneously; hence, why the experimentally accessible phase-space
+continues to be so large~\cite{walter2010solar}.
+
+\subsection{Key Performance Metrics}
+
+Three metrics are universally reported in PEC literature and constitute the
+prediction targets in this work.
+
+\paragraph{Photocurrent Density $J_{ph}$} (mA/cm\textsuperscript{2}) is measured
+by linear sweep voltammetry under AM~1.5G illumination at a standardised intensity
+of 100\,mW/cm\textsuperscript{2}.
+It reflects the rate of charge transfer to the electrolyte and serves as the
+primary proxy for combined solar absorption and charge collection efficiency.
+State-of-the-art values exceed 6\,mA/cm\textsuperscript{2} for
+BiVO\textsubscript{4}~\cite{kim2014bismuth} and reach above
+20\,mA/cm\textsuperscript{2} for GaN/InGaN nanowire photoanodes~\cite{kibria2015multibandgap}.
+
+\paragraph{Solar-to-Hydrogen Efficiency (STH)} is the gold standard for overall
+device efficiency, defined by Equation~\eqref{eq:sth}.
+The Shockley--Queisser-analogous theoretical maximum for a single-junction device
+with $E_g \approx 2.0$\,eV is approximately 16.8\%~\cite{walter2010solar}.
+The highest experimentally verified STH values for single-junction photoelectrodes
+under unassisted, unbiased conditions are approximately 12\% for III-nitride tandem
+structures~\cite{kibria2015multibandgap}.
+
+\paragraph{Hydrogen Evolution Rate (HER)} ($\mu$mol\,h\textsuperscript{-1}\,cm\textsuperscript{-2})
+is determined by gas chromatography.
+It is related to photocurrent through Faraday's law:
+\begin{equation}
+  \mathrm{HER} = \frac{J_{ph} \times 3600}{2 F} \times \eta_F \times 10^{6}
+  \label{eq:her}
+\end{equation}
+where $F = 96\,485$\,C/mol is Faraday's constant.
+HER is reported less frequently than $J_{ph}$ because it requires a gas-tight
+electrochemical cell and calibrated gas chromatograph, which explains the severe
+sparsity of this target in publicly available data.
+
+\subsection{Principal Material Systems}
+
+Table~\ref{tab:materials} summarises the photoelectrode materials covered in this
+study, their typical bandgap ranges, and representative photocurrent densities.
+
+\begin{table}[htb]
+\centering
+\caption{Common PEC photoelectrode materials, bandgap ranges, and typical
+         photocurrent performance.}
+\label{tab:materials}
+\begin{tabular}{p{3.8cm}ccc}
+\toprule
+Material & Bandgap (eV) & Typical $J_{ph}$ (mA/cm\textsuperscript{2}) & Role \\
+\midrule
+BiVO\textsubscript{4}       & 2.4--2.5 & 1--7   & Photoanode  \\
+$\alpha$-Fe\textsubscript{2}O\textsubscript{3} & 2.0--2.2 & 0.3--4 & Photoanode \\
+WO\textsubscript{3}         & 2.6--2.8 & 1--6   & Photoanode  \\
+TiO\textsubscript{2}        & 3.0--3.2 & 0.2--2 & Photoanode  \\
+ZnO                         & 3.2--3.4 & 0.5--3 & Photoanode  \\
+Cu\textsubscript{2}O        & 1.9--2.1 & 1--5   & Photocathode \\
+GaN / InGaN                 & 0.7--3.4 & 5--22  & Photoanode  \\
+Ta\textsubscript{3}N\textsubscript{5} & 2.0--2.1 & 0.3--4 & Photoanode \\
+Si                          & 1.1      & 8--30  & Photocathode \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Machine Learning for Materials Discovery}
+
+\subsection{General Approaches}
+
+Materials informatics applies statistical and machine learning methods to accelerate
+the discovery of new functional materials~\cite{ramprasad2017machine}.
+Pilania et al.~\cite{pilania2013accelerating} demonstrated that random forest models
+trained on DFT-computed features could predict perovskite formation energies with
+mean absolute errors below 0.1\,eV/atom --- a task that required only minutes of
+computation compared to hours of DFT.
+Isayev et al.~\cite{isayev2017universal} introduced universal fragment descriptors
+capable of predicting band structures across thousands of inorganic compounds.
+
+In the photocatalysis domain, Schmidt et al.~\cite{schmidt2019recent} reviewed
+supervised regression models for bandgap prediction from composition alone, reporting
+$R^2$ values of 0.85--0.94 on large DFT-computed datasets of thousands of entries.
+However, such accuracy relies on uniform, high-quality computed labels; experimental
+datasets with heterogeneous measurement conditions achieve notably lower $R^2$
+values even with sophisticated models~\cite{goldsmith2018machine}.
+
+\subsection{ML Applied to PEC Systems}
+
+Compared with solid-state property prediction, PEC performance prediction is
+inherently more challenging because the output depends not only on the semiconductor
+material but also on electrolyte chemistry, electrode geometry, surface catalysts,
+and illumination conditions --- factors that vary significantly across different
+research groups.
+
+Wu et al.~\cite{wu2019machine} trained gradient-boosted models on 150 published
+oxygen evolution catalyst measurements, demonstrating that material composition alone
+could predict overpotential with a mean absolute error of 27\,mV.
+For photocatalytic water splitting, Chen et al.~\cite{chen2019graph} applied graph
+neural networks to predict the hydrogen evolution rate of organic photocatalysts
+from molecular structure, achieving $R^2 = 0.61$ on a test set of 100 compounds.
+Neither of these studies attempted cross-material generalisation --- each was built
+around a single material family by design.
+A model trained exclusively on transition-metal oxide catalysts carries no information
+about organic photocatalysts, and vice versa.
+Our dataset spans nine material systems deliberately, which makes the modelling harder
+but produces predictions that remain useful even when the researcher has not yet
+decided which material class to focus on.
+
+\subsection{Ensemble Tree Methods and Model Justification}
+
+\subsubsection{Why Tree-Based Ensembles?}
+
+The dataset size made the model choice fairly straightforward.
+With 400--560 training rows per target, neural networks are not a realistic option.
+A modest two-layer MLP with 128 units per layer has over 16,000 parameters ---
+that is roughly 30 parameters per training sample for photocurrent,
+a ratio at which overfitting is essentially guaranteed regardless of regularisation.
+We verified this in preliminary experiments: MLP validation loss diverged within
+a few epochs regardless of dropout or weight decay settings.
+Tree-based ensembles do not have this problem.
+A 2022 benchmark by Grinsztajn et al.~\cite{grinsztajn2022tree} across 45 datasets
+confirmed that gradient-boosted trees consistently match or outperform deep learning
+on tabular data at this scale.
+
+There are also practical advantages specific to this dataset.
+Decision trees handle missing values natively, which matters when 51\% of bandgap
+values and 79\% of temperature values are absent in the original data.
+They require no feature scaling.
+Their importance scores also give a direct way to check whether the
+physics-motivated features we engineered are actually being used ---
+which turned out to be an important validation step.
+
+\begin{itemize}
+  \item \textbf{Robustness to missing values and mixed types.}
+        Decision trees natively partition on any threshold, making them
+        insensitive to feature scaling and partially missing inputs --- both
+        common in experimental datasets.
+  \item \textbf{Low sample complexity.}
+        A random forest with 300 trees can generalise well with as few as
+        200 training samples; deep networks typically require orders of
+        magnitude more data to avoid overfitting.
+  \item \textbf{Built-in feature selection.}
+        Splitting criteria automatically emphasise informative features and
+        ignore irrelevant ones, providing interpretable importance scores.
+  \item \textbf{Bias--variance behaviour.}
+        Bagging (Random Forest) reduces variance at the cost of a slight
+        increase in bias; boosting (XGBoost) progressively reduces bias by
+        fitting residuals. Their combination in an ensemble provides
+        complementary error reduction.
+\end{itemize}
+
+\subsubsection{XGBoost}
+
+XGBoost~\cite{chen2016xgboost} builds an additive ensemble of decision trees by
+sequentially fitting residuals with a regularised objective:
+\begin{equation}
+  \mathcal{L}(\phi) =
+    \sum_{i} \ell\!\left(y_i,\, \hat{y}_i\right)
+    + \sum_{k} \Omega(f_k)
+  \label{eq:xgb_loss}
+\end{equation}
+where $\ell$ is a differentiable loss function, $\hat{y}_i$ is the current
+ensemble prediction, and the regularisation term
+$\Omega(f_k) = \gamma T + \tfrac{1}{2}\lambda \|w\|^2$
+penalises both the number of leaves $T$ and the leaf weight magnitude.
+This explicit regularisation reduces overfitting on small datasets compared to
+classical gradient boosting~\cite{friedman2001greedy}.
+
+\subsubsection{Random Forest}
+
+Random Forest~\cite{breiman2001random} averages predictions from $B$
+independently trained decision trees, each fitted on a bootstrap sample of the
+training data with a random subset of features considered at each node split.
+The resulting de-correlation of individual trees substantially reduces the
+variance of the ensemble compared to a single deep tree.
+Beyond point prediction, the spread across individual trees provides a natural
+uncertainty proxy~\cite{wager2014confidence} that is exploited in the confidence
+scoring scheme of this work (Section~\ref{ch:B}).
+
+\subsubsection{Alternatives Considered}
+
+\paragraph{Linear models} (Ridge, LASSO) were explored and discarded.
+We first tried using Ridge regression as a ``sanity'' check.
+The results showed that the Ridge model achieved an $R^2$ value of 0.11 on
+photocurrent --- only slightly above simply predicting the mean of the training set.
+This result did not come as a surprise: the relationship between bandgap energy
+and photocurrent is very non-linear.
+For example, a 0.1\,eV shift in bandgap from the optimum of 2.0\,eV causes large
+changes in the amount of light absorbed by the material, while the same 0.1\,eV
+shift near 3.2\,eV has little or no effect on light absorption.
+There are too many combinations of polynomial and interaction terms to add manually
+to make Ridge regression usable without creating an overly complicated model.
+
+\paragraph{Neural networks} were eliminated because we did not have sufficient data.
+Even when applying both aggressive dropout and weight decay, a simple two-layer
+multi-layer perceptron (MLP) would begin to fit noise in the data after just a few
+epochs on our training sets.
+Using 400--560 training samples with a relatively small MLP of two hidden layers
+each containing 128 units created a total of 16,000+ weights --- a ratio of
+approximately 30:1 of weights to training samples.
+This high ratio was confirmed through empirical testing: regardless of the strength
+of regularisation applied, validation loss began to diverge from training loss
+during the first several epochs.
+
+\paragraph{Support Vector Regression (SVR)} with an RBF kernel was able to perform
+better than Ridge regression but lost 0.08--0.12 $R^2$ units compared to XGBoost
+on each target variable.
+In addition to requiring standardisation of all input variables, SVR also requires
+that the standardiser be saved as part of the prediction pipeline --- failure to do
+so leads to silent failures at inference time.
+Since XGBoost outperformed SVR consistently and without needing standardisation,
+there was no reason to continue using SVR in the final prediction pipeline.
+
+\section{Feature Engineering for PEC}
+
+Input data is limited.
+The information contained within individual values of bandgap and pH does contain
+some level of value; however, the Nernst equation describes how the two factors
+combine to create the actual chemical potential --- the flat-band potential of a
+metal oxide shifts with a drop of $-59$\,mV per unit of pH.
+Therefore, a material with a large bandgap will behave significantly differently
+in an acid versus a base environment.
+If the model can only view bandgap and pH as independent features then it would
+need to find out about their interaction through the first few hundred training
+examples.
+A direct shortcut into this relationship has been engineered using the product of
+these two as a new feature.
+Huo et al.~\cite{huo2019unified} demonstrated a 30\% improvement in predicting
+photocatalytic activity from using a similar method.
+
+For PEC systems, the key electrochemical relationships governing performance are:
+
+\begin{enumerate}
+  \item The \textbf{Nernst equation}: the flat-band potential of a metal oxide
+        semiconductor shifts at $-59$\,mV per pH unit, so the net thermodynamic
+        driving force depends on the product $E_g \times \text{pH}$.
+  \item The \textbf{Butler--Volmer relation}: the reaction rate scales
+        exponentially with overpotential $\eta = V_{bias} - (E_g - 1.23)$,
+        motivating the feature \texttt{overpotential\_proxy}.
+  \item \textbf{Faraday's law}: the H\textsubscript{2} evolution rate is
+        directly proportional to photocurrent, providing a deterministic
+        relationship exploited during data augmentation
+        (Equation~\eqref{eq:her}).
+\end{enumerate}
+
+These physical relationships justify the interaction features described in
+Chapter~\ref{ch:B}.
+
+\section{Gap Analysis}
+
+A review of the existing literature reveals the following gaps that motivate
+the present work:
+
+\begin{enumerate}
+  \item No publicly available, ML-ready dataset covers a broad range of
+        inorganic PEC photoelectrode materials with experimental performance
+        metrics for all three targets (Photocurrent, STH, HER) simultaneously.
+
+  \item Existing PEC ML studies do not address the severe data sparsity of
+        STH and HER targets --- the two most practically relevant metrics
+        for assessing solar-to-fuel efficiency.
+
+  \item Deployed, interactive web applications that expose PEC prediction
+        models to experimental researchers have not been reported in the
+        literature.
+
+  \item Uncertainty quantification in PEC property prediction --- including
+        model confidence scores and inter-model agreement --- is absent from
+        prior work, limiting the practical usefulness of existing predictions.
+\end{enumerate}
+
+This work addresses all four gaps through a combination of data engineering,
+model design, and system deployment.

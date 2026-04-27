@@ -1,0 +1,149 @@
+\chapter{Introduction}\label{ch:intro}
+
+\section{Problem Background}
+
+The global transition away from fossil fuels requires scalable, carbon-free energy
+carriers. Molecular hydrogen~(H\textsubscript{2}) is widely regarded as one of the
+most attractive options: it has the highest gravimetric energy density of any known
+fuel (120\,MJ/kg), produces only water upon combustion, and can be stored and
+transported using existing infrastructure~\cite{turner2004sustainable}.
+Currently, however, more than 95\% of global hydrogen is produced by steam methane
+reforming --- a process that emits approximately 10\,kg of CO\textsubscript{2} per
+kilogram of H\textsubscript{2}~\cite{crabtree2004hydrogen}.
+
+Photoelectrochemical (PEC) water splitting offers a pathway to produce green hydrogen
+directly from sunlight and water using a semiconductor photoelectrode immersed in an
+aqueous electrolyte~\cite{fujishima1972electrochemical}.
+When photons with energy exceeding the semiconductor bandgap are absorbed, they
+generate electron--hole pairs.
+The holes oxidise water at the photoanode (oxygen evolution reaction, OER), while
+the electrons reduce protons at the cathode (hydrogen evolution reaction, HER):
+
+\begin{align}
+  \text{Anode (OER):}   &\quad 2\,\mathrm{H_2O}
+    \;\xrightarrow{h\nu}\;
+    \mathrm{O_2} + 4\,\mathrm{H^+} + 4e^- \\
+  \text{Cathode (HER):} &\quad 4\,\mathrm{H^+} + 4e^-
+    \;\to\; 2\,\mathrm{H_2}
+\end{align}
+
+The overall efficiency of this process is quantified by the Solar-to-Hydrogen (STH)
+efficiency:
+\begin{equation}
+  \mathrm{STH} =
+    \frac{J_{ph} \times 1.23\,\mathrm{V} \times \eta_F}{P_{in}} \times 100\%
+  \label{eq:sth}
+\end{equation}
+where $J_{ph}$ is the photocurrent density (mA/cm\textsuperscript{2}),
+1.23\,V is the thermodynamic minimum potential for water splitting,
+$\eta_F$ is the Faradaic efficiency, and
+$P_{in}$ is the incident light power density (mW/cm\textsuperscript{2}).
+
+After decades of research, only a handful of materials come close to the
+theoretical STH limit for their bandgap~\cite{walter2010solar}.
+Finding a high-efficiency photoelectrode is not a matter of testing one or two
+variables --- a researcher working with BiVO\textsubscript{4}, for example,
+must decide on the nanostructure morphology, whether to add a co-catalyst,
+which electrolyte to use, what pH and applied bias to set, and each choice
+interacts with the others in ways that are hard to predict in advance.
+Testing all combinations experimentally is simply not feasible within a typical
+research timeline.
+
+\section{Motivation and Relevance}
+
+Machine learning has already changed how researchers approach materials discovery
+in adjacent fields.
+Battery electrolyte screening, catalysis, and photovoltaics all have ML-assisted
+workflows now.
+PEC water splitting does not --- and the gap is not because the problem is
+unimportant, but because the data is hard to collect.
+
+When we went through 529 published papers, we found that fewer than 1 in 10
+reported an STH value.
+Most papers measure photocurrent and stop there, because calculating STH requires
+additional instrumentation and a more careful experimental setup.
+The end result is a dataset where the single most important performance metric
+practically speaking is also the least frequently occurring one in the training data.
+Standard k-fold cross-validation fails quickly when there are only 48 rows.
+
+This project has a genuinely multidisciplinary nature, which ultimately shaped
+how I approached the methodology.
+Electrochemistry allows you to determine which variables to include as features.
+Materials science informs what we can trust in the experimental data.
+Machine learning provides the tools to generalise across hundreds of diverse
+experiments from different laboratories.
+Without all three working together, the result is either a physically invalid model,
+or a scientifically valid one that cannot generalise beyond its training data.
+
+\section{Aims and Objectives}
+
+The main goal of this project is to create a practical application of machine
+learning.
+This involves building a machine-learning based system which predicts three
+different measures --- photocurrent density, Solar-to-Hydrogen (STH) efficiency,
+and Hydrogen Evolution Rate --- based upon the provided material and experimental
+parameters.
+Once the model was created, we made the developed system available via a user
+interface, allowing researchers to utilise the machine learning based system.
+
+To achieve our stated goals, we needed to solve multiple issues sequentially:
+
+\begin{enumerate}
+  \item Create a dataset from 529 peer-reviewed papers representing
+        Photoelectrochemical (PEC) water splitting, covering all possible
+        combinations of various materials, structural parameters, and operating
+        conditions, with photocurrent density, Solar-to-Hydrogen (STH) efficiency,
+        and Hydrogen Evolution Rate as predictive variables.
+        Unfortunately, creating the above mentioned dataset proved to be far more
+        challenging than initially anticipated, because most research studies
+        reported only photocurrent density.
+
+  \item Develop numerical representations of input values into features by
+        applying established electrochemical relationships.
+        These include the bandgap--pH product as described by the Nernst equation,
+        an overpotential proxy as derived from Butler--Volmer kinetic equations,
+        and hydrogen production rate as derived from Faraday's law.
+        In doing so, we avoided requiring the machine learning algorithm to derive
+        these same relationships independently.
+
+  \item Train separate regression models utilising XGBoost and Random Forest
+        for each predictive variable, evaluate both using 5-fold cross-validation,
+        and combine the results into a single weighted ensemble where weights
+        represent confidence in each model's output.
+
+  \item Make trained models accessible via a Flask REST API and expose them
+        via a React web-based interface, returning predicted values along with
+        a LOW / MEDIUM / HIGH classification of potential success based upon
+        the input configuration entered by users.
+
+  \item Compare cross-validated performance metrics to demonstrate that adding
+        physics-derived estimates and synthetic rows to the existing dataset
+        produces significantly improved performance compared to training solely
+        on the original sparse data.
+\end{enumerate}
+
+\section{Structure of the Report}
+
+The structure of the report is as follows:
+
+\begin{itemize}
+  \item In Chapter~\ref{ch:A}, we present all the necessary context to understand
+        our design choices: the physical behaviour of PEC cells; which performance
+        indicators are important and why; and why a tree-based ensemble model has
+        been preferred over a neural network or linear regression.
+
+  \item In Chapter~\ref{ch:B}, the content is focused around the methodical
+        development of this project: how the dataset was built from 529 scientific
+        articles; how missing values for STH and H\textsubscript{2} were computed
+        using physics equations; how 20 features were extracted from 8 input
+        parameters; and how the training and prediction pipeline is organised.
+
+  \item Chapter~\ref{ch:C} shows, with examples of three typical material
+        configurations, what the models were able to achieve: cross-validation
+        results before and after augmentation, feature importance analysis,
+        and a system demonstration on representative inputs.
+
+  \item Chapter~\ref{ch:concl} summarises the main outcomes, acknowledges
+        where the approach falls short, and outlines the most promising
+        directions for future work.
+\end{itemize}

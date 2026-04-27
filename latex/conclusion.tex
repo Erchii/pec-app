@@ -1,0 +1,107 @@
+\chapter{Conclusion}\label{ch:concl}
+
+\section{Summary of Contributions}
+
+This work presented a complete machine learning system for predicting the
+performance of photoelectrochemical water-splitting devices from material and
+experimental parameters.
+The main contributions are as follows.
+
+\begin{enumerate}
+  \item \textbf{Curated and augmented PEC dataset.}
+        A dataset of 676 entries was assembled from 529 published experimental
+        results and extended through two complementary strategies: physics-based
+        estimation of STH and H\textsubscript{2} values from measured photocurrents
+        (using the STH formula and Faraday's law), and 147 literature-anchored
+        synthetic rows covering 25 well-characterised material systems.
+        Augmentation increased STH coverage from 9\% to 82\% and
+        H\textsubscript{2} coverage from 11\% to 83\%.
+
+  \item \textbf{Physics-informed feature engineering.}
+        Twenty numerical features were engineered from eight raw inputs,
+        including interaction terms motivated by the Nernst equation
+        ($E_g \times \mathrm{pH}$), Butler--Volmer kinetics
+        ($V_{bias} \times I_{proxy}$), and Arrhenius-like thermal activation
+        ($\mathrm{pH} \times T$).
+        These features encode electrochemical domain knowledge that is not
+        derivable from raw inputs alone.
+
+  \item \textbf{Ensemble ML pipeline with uncertainty quantification.}
+        XGBoost and Random Forest regressors are trained independently per
+        target using 5-fold cross-validation.
+        The ensemble inference strategy weights predictions by CV $R^2$
+        (Equation~\eqref{eq:ensemble}) and computes a confidence score from
+        model quality and inter-model agreement (Equation~\eqref{eq:confidence}).
+
+  \item \textbf{Data-driven performance classification.}
+        A composite score calibrated to training-set percentile thresholds
+        and modulated by the confidence factor replaces the previous
+        hardcoded threshold, enabling the HIGH class to be predicted for
+        genuinely top-quartile inputs.
+
+  \item \textbf{Deployed full-stack application.}
+        A Flask REST API and a React single-page web interface expose the
+        trained models with real-time predictions, confidence scores,
+        and performance classification, deployed on a production server
+        via Gunicorn and Nginx.
+
+  \item \textbf{Measurable model improvement through augmentation.}
+        Cross-validated $R^2$ improved from 0.065 to 0.454 for Photocurrent
+        Density, from 0.278 to 0.533 for STH Efficiency, and from $-$0.090
+        to 0.366 for H\textsubscript{2} Evolution Rate after augmentation
+        and physics-informed feature expansion.
+\end{enumerate}
+
+\section{Limitations and Future Work}
+
+Several directions remain open for future investigation.
+
+\begin{itemize}
+  \item \textbf{Expanded real dataset.}
+        The most impactful improvement would be increasing the number of genuine
+        experimental STH and H\textsubscript{2} measurements.
+        Automated NLP-based table extraction tools (e.g., GROBID, ChemDataExtractor)
+        applied to open-access literature could substantially expand the dataset
+        within a single research semester.
+
+  \item \textbf{DFT-derived features.}
+        The Materials Project API~\cite{jain2013commentary} provides free access
+        to computed formation energies, effective carrier masses, and dielectric
+        constants for thousands of inorganic compounds.
+        Adding even two or three of these as features would give the model
+        material-specific information that composition labels alone cannot carry ---
+        two BiVO\textsubscript{4} samples synthesised by different routes can have
+        very different carrier mobilities, but both currently map to the same string
+        in the feature space.
+        AFLOW~\cite{curtarolo2012aflow} is an alternative source for materials with
+        less coverage in the Materials Project.
+
+  \item \textbf{Advanced models.}
+        Tree ensembles work well at our current data size but the confidence score
+        we compute is a proxy, not a statistically calibrated uncertainty estimate.
+        Once genuine experimental data grows past roughly 2,000 rows, Bayesian
+        neural networks or MC dropout ensembles become viable and would give proper
+        predictive intervals rather than the agreement-based confidence measure
+        used here.
+        Graph neural networks operating on crystal structures are a longer-term
+        option, contingent on consistent structural data being available across
+        the material systems in the dataset.
+
+  \item \textbf{Multi-target learning.}
+        A joint model predicting $J_{ph}$, STH, and HER simultaneously could
+        exploit the known thermodynamic correlations between targets and
+        potentially reduce data requirements for the sparse HER target.
+
+  \item \textbf{Active learning loop.}
+        The confidence score could drive an active learning workflow:
+        configurations with low confidence and predicted high performance
+        would be recommended to experimentalists, closing the loop
+        between prediction and data acquisition.
+\end{itemize}
+
+Despite current limitations, the system provides a practical and immediately
+deployable tool for accelerating the pre-screening of PEC photoelectrode
+candidates.
+By reducing the number of synthesise-and-test iterations before identifying
+high-efficiency configurations, the system contributes to the broader goal of
+accelerating the development of sustainable solar hydrogen production.

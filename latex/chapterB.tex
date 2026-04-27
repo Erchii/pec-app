@@ -1,0 +1,456 @@
+\chapter{Design and Methodology}\label{ch:B}
+
+\section{System Architecture Overview}
+
+The system consists of three loosely coupled components, each independently
+deployable and testable:
+
+\begin{enumerate}
+  \item \textbf{Data pipeline} --- dataset curation, physics-based augmentation,
+        feature engineering, and model training
+        (\texttt{expand\_dataset.py}, \texttt{train.py},
+        \texttt{utils/preprocessing.py}).
+
+  \item \textbf{Backend API} --- a Flask REST service that loads trained model
+        artifacts at startup and serves predictions with confidence scores
+        (\texttt{app.py}).
+
+  \item \textbf{Frontend} --- a single-page web application using the React
+        framework and Vite for compiling and bundling the code, served
+        statically via Nginx which also handles reverse proxying for the API.
+\end{enumerate}
+
+The backend was deployed as a WSGI server using Gunicorn, with two worker
+processes running on an Ubuntu~24.04 machine.
+Nginx sat in front and did two things --- it delivered the compiled React
+bundle statically, and it forwarded all requests starting with \texttt{/api/}
+back upstream to Gunicorn on port 5001.
+To the client's browser, everything came from the same origin --- there was
+never a cross-origin request and no port number to configure.
+
+\section{Dataset}
+
+\subsection{Collection and Structure}
+
+Most of the time spent on assembling the dataset was during the first semester.
+Using search terms such as \emph{``photoelectrochemical water splitting''},
+\emph{``photoanode photocurrent density''}, and \emph{``STH efficiency semiconductor''},
+we searched both Google Scholar and Web of Science.
+All results had to be reviewed individually --- many studies utilised non-standard
+illumination methods, provided only qualitative findings, or examined photocatalytic
+suspensions instead of electrode-based systems --- all of which were excluded from
+the dataset.
+Of the 529 papers remaining after manual review, they represent approximately
+twenty years of PEC research --- from early studies involving titanium dioxide
+(TiO\textsubscript{2}), through to current high-performance bismuth vanadate
+(BiVO\textsubscript{4}) and gallium nitride (GaN) materials.
+Each row within the dataset represents a single experimental setup, identified by
+DOI, taken from each individual study.
+
+The thirty columns present information regarding the materials investigated,
+structural properties, electrochemical test conditions, and various performance
+metrics.
+The most significant columns related to the investigation and their corresponding
+data types are listed in Table~\ref{tab:columns}.
+
+\begin{table}[htb]
+\centering
+\caption{Key dataset columns, types, and coverage in the original (529-row) dataset.}
+\label{tab:columns}
+\begin{tabular}{llr}
+\toprule
+Column & Type & Coverage (\%) \\
+\midrule
+Material System              & Categorical & 97 \\
+Bandgap (eV)                 & Numerical   & 49 \\
+Synthesis Method             & Categorical & 80 \\
+Nanostructure                & Categorical & 67 \\
+Cocatalyst                   & Categorical & 62 \\
+Electrolyte                  & Categorical & 73 \\
+pH                           & Numerical   & 47 \\
+Light Intensity (mW/cm\textsuperscript{2}) & Numerical & 61 \\
+Applied Bias (V vs.\ RHE)   & Numerical   & 74 \\
+Temperature (K)              & Numerical   & 21 \\
+Photocurrent Density         & Numerical   & 78 \\
+STH Efficiency (\%)          & Numerical   & \textbf{9} \\
+H\textsubscript{2} Evolution Rate & Numerical & \textbf{11} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The values of row coverage correspond to the difficulty of the measurements.
+In almost all papers, information about material composition and method of
+preparation can be found --- it is a standard element of the experimental
+description.
+Photocurrent density is mentioned in 78\% of cases, since it is a standard output
+of practically any PEC experiment.
+STH and H\textsubscript{2} coverage then fall to 9\% and 11\%.
+Measuring STH requires knowledge of the incident radiation power and Faradaic
+efficiency.
+Determining H\textsubscript{2} evolution rate requires a gas-tight electrochemical
+cell, which most laboratories publishing photocurrent data cannot afford to use on
+a routine basis.
+Therefore the lack of appropriate equipment leads to an instrumentation gap, which
+causes the data scarcity addressed by the augmentation pipeline developed in this
+work.
+Only 48 STH rows and 57 H\textsubscript{2} rows exist; therefore even a 5-fold
+cross-validation results in as few as 10 validation samples per fold for estimating
+$R^2$ values.
+
+\subsection{Physics-Based Dataset Augmentation}
+
+To address the sparsity problem, two complementary augmentation strategies were
+applied, producing a final dataset of \textbf{676 rows}.
+
+\subsubsection{Strategy 1: Physics-Derived Estimates for Existing Rows}
+
+For the 364 rows in which photocurrent density has been determined via measurement
+but STH has not been reported, the STH value was estimated using the standard
+approximation (Equation~\eqref{eq:sth}):
+
+\begin{equation}
+  \widehat{\mathrm{STH}} =
+    \frac{J_{ph} \times 1.23}{P_{in}} \times \eta_F \times 100\%
+  \label{eq:sth_est}
+\end{equation}
+
+where $P_{in}$ is set to the reported light intensity when available, or to
+100\,mW/cm\textsuperscript{2} (1\,sun, AM~1.5G standard) otherwise;
+$\eta_F$ is sampled uniformly from $[0.75,\,0.98]$ for unbiased measurements
+or $[0.55,\,0.85]$ for biased measurements ($|V_{bias}| > 0.1$\,V) to reflect
+realistic Faradaic losses.
+A multiplicative noise factor $\delta \sim \mathcal{U}(0.92,\,1.08)$ is applied
+to reproduce typical measurement variability across different laboratories.
+
+Similarly, the H\textsubscript{2} evolution rate was derived from Faraday's law
+(Equation~\eqref{eq:her}) with $\eta_F \sim \mathcal{U}(0.60,\,0.95)$.
+
+This filled \textbf{361} STH values and \textbf{357} H\textsubscript{2} values.
+The scientific justification is that photocurrent and STH are not independent
+quantities --- STH is defined as a function of photocurrent via a fixed
+thermodynamic formula.
+A paper that reports $J_{ph} = 3.5$\,mA/cm\textsuperscript{2} under standard
+illumination has implicitly already determined $\mathrm{STH} \approx 4.3\%$,
+whether or not the authors computed it.
+We are recovering a value already encoded in the data, not fabricating a new
+measurement.
+The Faradaic noise term prevents the recovered labels from becoming a perfectly
+deterministic function of photocurrent, which would otherwise allow the STH model
+to learn a trivial linear mapping rather than the material-dependent relationships
+we care about.
+
+\subsubsection{Strategy 2: Literature-Based Synthetic Rows}
+
+The second strategy added 147 entirely new rows for 25 well-studied material systems.
+For each material, photocurrent ranges were taken from published review
+articles~\cite{dias2016recent,tamirat2016using} --- these are ranges that have
+been measured and reported many times across independent labs, so they represent
+a reasonable envelope of achievable performance.
+Structural parameters and operating conditions were sampled to match typical
+experimental practice for each material: BiVO\textsubscript{4}, for example,
+was paired with near-neutral Na\textsubscript{2}SO\textsubscript{4} electrolyte
+at pH~6--7 and a modest applied bias, consistent with how it is almost always
+tested in the literature.
+The covered systems include BiVO\textsubscript{4} variants,
+$\alpha$-Fe\textsubscript{2}O\textsubscript{3}, WO\textsubscript{3},
+TiO\textsubscript{2}, ZnO, Cu\textsubscript{2}O, GaN,
+Ta\textsubscript{3}N\textsubscript{5}, Si, g-C\textsubscript{3}N\textsubscript{4},
+CuInS\textsubscript{2}, and several ternary oxides.
+Every synthetic row carries the tag \texttt{Data\_Source = "synthetic"} so it
+can be identified and excluded from any analysis that requires only real measurements.
+
+\subsection{Missing Value Imputation}
+
+Before running augmentation, four supporting fields were filled using deterministic
+rules rather than statistical imputation:
+
+\begin{itemize}
+  \item \textbf{Bandgap}: for 204 rows with known material but missing bandgap,
+        reference values were drawn from a lookup table of 40+ materials
+        (e.g., TiO\textsubscript{2} anatase: 3.2\,eV; BiVO\textsubscript{4}: 2.4\,eV;
+        $\alpha$-Fe\textsubscript{2}O\textsubscript{3}: 2.1\,eV) with a small jitter
+        $\delta \sim \mathcal{U}(-0.05,\,+0.05)$\,eV to prevent the lookup
+        from creating artificial clusters.
+
+  \item \textbf{pH}: inferred from electrolyte composition for 114 rows
+        (KOH / NaOH $\to$ pH~13--14;
+         H\textsubscript{2}SO\textsubscript{4} $\to$ pH~0--1.5;
+         Na\textsubscript{2}SO\textsubscript{4} $\to$ pH~5.8--7.2).
+
+  \item \textbf{Temperature}: set to 298\,K for all 420 rows lacking this value,
+        consistent with standard laboratory ambient conditions.
+
+  \item \textbf{Light intensity}: set to 100\,mW/cm\textsuperscript{2} for
+        61 rows that specify AM~1.5G illumination but omit the numeric value.
+\end{itemize}
+
+\subsection{Final Dataset Statistics}
+
+After augmentation, the dataset contains 676 rows.
+Table~\ref{tab:augmented} compares key coverage metrics before and after
+augmentation.
+
+\begin{table}[htb]
+\centering
+\caption{Dataset coverage before and after physics-based augmentation.}
+\label{tab:augmented}
+\begin{tabular}{lrrrr}
+\toprule
+Target / Feature & Before & Before (\%) & After & After (\%) \\
+\midrule
+Photocurrent Density & 410 & 78 & 557 & 82 \\
+STH Efficiency       & 48  &  9 & 556 & 82 \\
+H\textsubscript{2} Evolution Rate & 57 & 11 & 559 & 83 \\
+Bandgap (eV)         & 258 & 49 & 609 & 90 \\
+pH                   & 250 & 47 & 509 & 75 \\
+Temperature (K)      & 112 & 21 & 676 & 100 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Feature Engineering}
+
+Twenty numeric features are derived from eight raw input fields.
+Table~\ref{tab:features} lists each feature together with its physical
+motivation.
+The interaction features in the lower half of the table encode the most
+important cross-variable relationships identified in the PEC literature
+(Section~\ref{ch:A}).
+
+\begin{table}[htb]
+\centering
+\caption{Physics-informed engineered features used by the ML models.}
+\label{tab:features}
+\begin{tabular}{lp{8cm}}
+\toprule
+Feature & Physical motivation \\
+\midrule
+\texttt{photon\_energy}       & $1240/E_g$ --- absorption edge wavelength (nm) \\
+\texttt{overpotential\_proxy} & $V_{bias} - (E_g - 1.23)$: net driving force beyond thermodynamic minimum \\
+\texttt{bandgap\_sq}          & $E_g^2$: non-linear dependence of absorption on bandgap \\
+\texttt{log\_bandgap}         & $\ln(1+E_g)$: compressed bandgap representation \\
+\texttt{ph\_deviation}        & $|pH - 7|$: distance from neutral (surface charge state proxy) \\
+\texttt{bias\_positive}       & $\max(V_{bias},\,0)$: forward-bias contribution only \\
+\texttt{temp\_normalized}     & $(T - 298)/298$: normalised deviation from room temperature \\
+\texttt{has\_cocatalyst}      & Binary: 1 if cocatalyst is present, 0 otherwise \\
+\texttt{is\_nanostructured}   & Binary: 1 if nanostructure is non-bulk \\
+\texttt{ionic\_strength\_proxy} & Estimated ionic strength from electrolyte identity \\
+\texttt{bandgap\_x\_ph}       & $E_g \times \mathrm{pH}$: flat-band potential shift (Nernst: $-59$\,mV/pH) \\
+\texttt{bias\_x\_ionic}       & $V_{bias} \times I_{proxy}$: electric field in the double layer \\
+\texttt{bg\_x\_overpot}       & $E_g \times \eta_{proxy}$: combined thermodynamic driving force \\
+\texttt{ph\_x\_temp}          & $\mathrm{pH} \times T$: Arrhenius-like surface kinetics term \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Six categorical features --- material system, electrolyte, synthesis method,
+photoelectrode type, nanostructure, and morphology --- are one-hot encoded inside
+a scikit-learn \texttt{Pipeline} with \texttt{handle\_unknown="ignore"} so that
+unseen material names at inference time do not cause failures.
+Median imputation is applied to all numeric features and mode imputation to all
+categorical features within the same pipeline, ensuring consistent behaviour
+between training and deployment.
+
+\section{Data Leakage Prevention}\label{sec:leakage}
+
+STH efficiency is defined as a deterministic function of photocurrent
+(Equation~\eqref{eq:sth_est}).
+Including photocurrent as a predictor for STH would inflate the cross-validated
+$R^2$ to near 1.0 without the model learning any generalisable relationship.
+The STH model therefore excludes photocurrent from its feature set
+(\texttt{TARGET\_EXCLUSIONS["sth"] = ["photocurrent"]}).
+
+Similarly, 33 photocathode entries --- which by measurement convention report
+negative photocurrent values --- are removed from the photocurrent training set.
+Retaining them would create a bimodal target distribution incompatible with
+standard regression objectives.
+These rows are preserved in the dataset for completeness but excluded from
+the photocurrent target column during training.
+
+\section{ML Model Pipeline}
+
+\subsection{Model Selection Rationale}\label{sec:model_selection}
+
+Two complementary tree ensemble methods are trained independently for each target.
+As discussed in Section~\ref{ch:A}, tree-based ensembles are the empirically
+superior choice for tabular scientific datasets of this scale~\cite{grinsztajn2022tree}.
+
+\textbf{XGBoost Regressor} was configured with: 300 estimators, learning rate
+$\eta = 0.05$, maximum tree depth 4, subsampling ratio 0.8 (rows) and
+0.8 (features), $L_1$ regularisation $\alpha = 0.1$, $L_2$ regularisation
+$\lambda = 1.0$, and minimum child weight 3.
+The shallow trees (depth 4) and strong regularisation are deliberate: they
+reduce the risk of overfitting to measurement artefacts in the heterogeneous
+training data.
+
+\textbf{Random Forest Regressor} was configured with: 300 estimators, maximum
+depth 8, minimum samples per leaf 2, and the square-root feature selection
+heuristic at each split.
+The deeper trees (depth 8) without regularisation exploit a higher proportion
+of the training signal at the cost of increased variance, which is controlled
+by the averaging operation of the ensemble.
+
+Both models are wrapped in scikit-learn \texttt{Pipeline} objects that include
+the \texttt{ColumnTransformer} preprocessor described above.
+The full pipeline is cloned and re-trained on all available data after
+cross-validation evaluation to produce the final inference artifact.
+
+\subsection{Ensemble Inference and Confidence Scoring}\label{sec:ensemble}
+
+At prediction time, both saved models are queried independently.
+The ensemble prediction is the CV-R\textsuperscript{2}-weighted average:
+
+\begin{equation}
+  \hat{y}_{ens} =
+    \frac{\displaystyle\sum_{m} \max(0,\,r^2_m)\,\hat{y}_m}
+         {\displaystyle\sum_{m} \max(0,\,r^2_m)}
+  \label{eq:ensemble}
+\end{equation}
+
+This weighting scheme assigns near-zero influence to any model with a negative
+or near-zero $R^2$, preventing a poor learner from corrupting the ensemble output.
+
+Prediction uncertainty is characterised by the \emph{relative standard deviation}
+of the two models' outputs:
+\begin{equation}
+  \sigma_{rel} = \frac{\mathrm{std}(\hat{y}_1,\hat{y}_2)}{\hat{y}_{ens}}
+\end{equation}
+
+The \emph{confidence score} combines model quality and inter-model agreement
+into a single $[0,1]$ value:
+\begin{equation}
+  c = 0.6\,\bar{r}^2 + 0.4\,\max\!\left(0,\,1 - \sigma_{rel}\right)
+  \label{eq:confidence}
+\end{equation}
+where $\bar{r}^2$ is the mean cross-validated $R^2$ clipped to $[0,1]$.
+A score of 1.0 would require a perfect model ($r^2 = 1$) with zero disagreement
+between the two estimators.
+In practice, scores above 0.6 indicate that the prediction region is well covered
+by training data and both models agree on the output magnitude.
+
+\subsection{Performance Classification}\label{sec:classification}
+
+To turn three continuous predictions into a single actionable label, we compute
+a composite score on a 0--100 scale from the predicted photocurrent and STH values:
+\begin{equation}
+  s = \bigl(p_{pc} + b_{STH}\bigr)
+      \times \bigl(0.4 + 0.6\,c\bigr)
+  \label{eq:score}
+\end{equation}
+where:
+\begin{itemize}
+  \item $p_{pc} \in [0,\,100]$ is the photocurrent's percentile position
+        relative to the training distribution: $p_{pc} = 100$ for
+        $J_{ph} \geq p_{75}$, $p_{pc} = 50$ for $J_{ph} = p_{40}$,
+        with linear interpolation between these thresholds.
+  \item $b_{STH} \in \{0,\,7,\,15\}$ is a bonus for STH performance
+        (15 points if STH $\geq p_{75}$, 7 if STH $\geq p_{40}$, 0 otherwise).
+  \item $c$ is the confidence from Equation~\eqref{eq:confidence}.
+\end{itemize}
+
+The confidence factor $(0.4 + 0.6\,c)$ scales the score down for uncertain
+predictions: a model with $r^2 = 0$ can contribute at most 40 points to the
+composite score regardless of what the raw predicted values say, so low-confidence
+predictions cannot reach the HIGH class.
+The final thresholds --- HIGH ($s \geq 70$), MEDIUM ($40 \leq s < 70$),
+LOW ($s < 40$) --- were chosen so that HIGH roughly corresponds to the top
+quartile of the training distribution.
+
+\subsection{Cross-Validation Protocol}
+
+All models were evaluated with 5-fold cross-validation on the augmented dataset.
+For each fold, training and validation splits were created without any data leakage ---
+feature engineering was applied inside the pipeline, not beforehand.
+The random seed was fixed at 42 for all splits and model initialisations so that
+results can be reproduced exactly.
+After CV scoring, each model was retrained on the full available data for that
+target before saving, since the deployed model should use every row it can.
+
+For the pre-augmentation results in Table~\ref{tab:cv_results}, the same procedure
+was applied but with fold counts reduced for sparse targets.
+At 48 STH rows, a strict 5-fold split leaves only about 9 samples per validation
+fold --- too few for $R^2$ to be stable.
+Reducing the fold count in this case gives a more honest estimate of
+generalisation ability.
+
+\section{System Implementation}
+
+\subsection{Training Pipeline}
+
+The training script (\texttt{train.py}) runs in four stages.
+It starts by loading the CSV and standardising column names --- different versions
+of the dataset used slightly different capitalisations and spacing, so this
+normalisation step runs before anything else.
+
+\begin{enumerate}
+  \item Load the CSV and standardise raw column names to internal identifiers.
+  \item Parse and clean all numeric fields: values recorded as
+        ``$1.4 \pm 0.2$'' are converted to their central value, and physically
+        impossible inputs (negative photocurrent, pH outside $[0,14]$,
+        bandgap below 0.5\,eV) are flagged and removed.
+  \item Run the feature engineering module to compute all 20 derived columns
+        via \texttt{utils/preprocessing.py}.
+  \item Train both XGBoost and Random Forest for each target, run
+        cross-validation, select the better model, and save the artifact
+        as a \texttt{joblib} pickle containing the fitted pipelines,
+        CV metrics, training-set medians and modes for inference-time
+        imputation, and percentile thresholds for performance classification.
+\end{enumerate}
+
+\subsection{REST API}
+
+The backend has three endpoints.
+
+\begin{itemize}
+  \item \texttt{GET /} --- a health check that returns the names of the
+        loaded models and their CV $R^2$ scores.
+        The frontend fetches this on startup to display model quality
+        information before the user inputs anything.
+
+  \item \texttt{POST /predict} --- takes a JSON body with up to 14 fields,
+        runs feature engineering and inference, and returns predictions for
+        all three targets with per-target confidence scores and the composite
+        performance classification.
+
+  \item \texttt{GET /dataset} --- returns the full training dataset as a
+        JSON array for the frontend's data explorer tab.
+\end{itemize}
+
+Every input is validated against physical bounds before inference runs ---
+pH must be between 0 and 14, bandgap between 0.5 and 6\,eV,
+bias between $-2$ and 5\,V vs.\ RHE.
+A call to validate that will fail returns an HTTP~400 response with the exact
+name of the offending field, so the model does not create nonsensical outputs
+when it encounters invalid physical input parameters.
+
+\subsection{Web Application}
+
+The frontend application is built using React and was compiled into a statically
+bundled version of the code by Vite, served in production on port~80 via Nginx.
+All interactions made against the Flask API are proxied through Nginx, so users
+have no direct interaction with the Flask service itself.
+There are four pages within this interface.
+
+\begin{itemize}
+  \item \textbf{Dashboard} --- when opened, loads immediately and presents the
+        same quick prediction form alongside the current model $R^2$ scores
+        that are loaded dynamically each time the page is accessed.
+        This allows the user to determine how well they can trust the output
+        prior to entering any data.
+  \item \textbf{Prediction} --- presents the complete parameter prediction form,
+        placing the five required fields in the upper portion and the remainder
+        (optional) at the lower end.
+        This keeps the form functional even when it may appear overwhelming to
+        a new user.
+  \item \textbf{Results} --- displays the three values generated by prediction,
+        their confidence percentage, and colour-coded performance bars
+        (green for HIGH, yellow/orange for MEDIUM, red for LOW).
+  \item \textbf{About} --- shows the feature importance table, cross-validation
+        results, and composition breakdowns of the datasets used to build the
+        system.
+\end{itemize}
+
+All categorical input fields use \texttt{<datalist>} elements to offer
+autocomplete suggestions while still permitting free-text entry, so
+researchers can input any material or electrolyte not present in the
+preset list.

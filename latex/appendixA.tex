@@ -6,7 +6,7 @@ After training on the augmented dataset, the XGBoost model for Photocurrent
 assigns the following top-15 feature importance scores (mean impurity decrease,
 normalised to sum to 1.0):
 
-\begin{table}[h]
+\begin{table}[htb]
 \centering
 \caption{Top-15 XGBoost feature importances for Photocurrent Density prediction.}
 \label{tab:feat_importance_pc}
@@ -47,19 +47,19 @@ The following is an excerpt from the \texttt{train.py} output after augmentation
 [INFO]   XGBoost       R2=+0.454 +/- 0.305  MAE=2.9657
 [INFO]   RandomForest  R2=+0.292 +/- 0.138  MAE=3.4954
 [INFO]   Best: XGBoost  (CV R2=+0.454)
-[INFO]   Thresholds — high>=4.000  medium>=1.580
+[INFO]   Thresholds - high>=4.000  medium>=1.580
 
 [INFO] Target: sth  (556 valid rows)
 [INFO]   Features: 20 numeric + 6 categorical
 [INFO]   XGBoost       R2=+0.533 +/- 0.178  MAE=2.2954
 [INFO]   RandomForest  R2=+0.355 +/- 0.079  MAE=2.8837
 [INFO]   Best: XGBoost  (CV R2=+0.533)
-[INFO]   Thresholds — high>=3.722  medium>=1.365
+[INFO]   Thresholds -- high>=3.722  medium>=1.365
 
 [INFO] Target: h2  (559 valid rows)
 [INFO]   Features: 20 numeric + 6 categorical
 [INFO]   XGBoost       R2=+0.366 +/- 0.099  MAE=0.7285
 [INFO]   RandomForest  R2=+0.221 +/- 0.032  MAE=0.8631
 [INFO]   Best: XGBoost  (CV R2=+0.366)
-[INFO]   Thresholds — high>=61.205  medium>=22.186
+[INFO]   Thresholds -- high>=61.205  medium>=22.186
 \end{lstlisting}

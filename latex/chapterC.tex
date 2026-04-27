@@ -1,0 +1,283 @@
+\chapter{Results and Discussion}\label{ch:C}
+
+\section{Dataset Statistics After Augmentation}
+
+The augmentation pipeline expanded the dataset from 529 to \textbf{676 rows}.
+Table~\ref{tab:augmented_summary} shows the composition by data source.
+
+\begin{table}[htb]
+\centering
+\caption{Dataset composition by source after augmentation.}
+\label{tab:augmented_summary}
+\begin{tabular}{lrl}
+\toprule
+Data source & Rows & Description \\
+\midrule
+\texttt{original}  &  13 & All key fields present in the published paper \\
+\texttt{estimated} & 516 & STH / H\textsubscript{2} / Bandgap / pH filled via physics model \\
+\texttt{synthetic} & 147 & New rows based on literature performance ranges \\
+\midrule
+Total              & 676 & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+After removing 33 photocathode rows from the photocurrent target
+(Section~\ref{sec:leakage}), the effective training set sizes are:
+521 rows for Photocurrent, 556 for STH Efficiency, and 559 for
+H\textsubscript{2} Evolution Rate.
+
+The five most represented materials in the dataset are:
+BiVO\textsubscript{4} (152 rows), $\alpha$-Fe\textsubscript{2}O\textsubscript{3}
+(78 rows), ZnO (40 rows), TiO\textsubscript{2} (36 rows), and WO\textsubscript{3}
+(28 rows).
+This distribution reflects the prevalence of these materials in published
+PEC research over the past two decades.
+
+\section{Model Performance}
+
+\subsection{Cross-Validation Results}
+
+Table~\ref{tab:cv_results} presents 5-fold cross-validation metrics for both
+model types on each prediction target, comparing the original sparse dataset
+with the augmented dataset.
+
+\begin{table}[htb]
+\centering
+\caption{5-fold CV results before and after augmentation. Best values per target shown in bold.}
+\label{tab:cv_results}
+\begin{tabular}{llccc}
+\toprule
+Target & Model & $R^2$ & MAE & Training rows \\
+\midrule
+\multicolumn{5}{l}{\textit{Before augmentation}} \\
+Photocurrent & Random Forest & 0.065 & 5.12 & 380 \\
+STH          & Random Forest & 0.278 & 5.47 & 48  \\
+H\textsubscript{2} & Random Forest & $-$0.090 & 1.29 & 57 \\
+\midrule
+\multicolumn{5}{l}{\textit{After augmentation}} \\
+Photocurrent & \textbf{XGBoost}      & \textbf{0.454} & \textbf{2.97} & 521 \\
+Photocurrent & Random Forest         & 0.292          & 3.50          & 521 \\
+STH          & \textbf{XGBoost}      & \textbf{0.533} & \textbf{2.30} & 556 \\
+STH          & Random Forest         & 0.355          & 2.88          & 556 \\
+H\textsubscript{2} & \textbf{XGBoost} & \textbf{0.366} & \textbf{0.73} & 559 \\
+H\textsubscript{2} & Random Forest    & 0.221          & 0.86          & 559 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+XGBoost outperforms Random Forest on all three targets after augmentation.
+The improvement from augmentation is most dramatic for
+H\textsubscript{2}: from $R^2 = -0.09$ (pre-augmentation, worse than predicting
+the mean) to $R^2 = 0.37$ post-augmentation.
+STH improves from 0.28 to 0.53, confirming that the physics-derived labels
+provide a genuine learning signal rather than introducing confounding noise.
+
+\subsection{Analysis of Performance Improvement}
+
+The absolute improvements in $R^2$ through augmentation and feature engineering are:
+
+\begin{itemize}
+  \item Photocurrent: $+0.39$ (+598\% relative to the pre-augmentation baseline)
+  \item STH: $+0.26$ (+92\% relative)
+  \item H\textsubscript{2}: $+0.46$ (from negative to positive $R^2$)
+\end{itemize}
+
+The large improvement in photocurrent prediction is attributable to two
+simultaneous changes: (i) a 37\% increase in training data (380 $\to$ 521 rows),
+and (ii) the addition of six physics-motivated interaction features
+(\texttt{bandgap\_x\_ph}, \texttt{bias\_x\_ionic}, \texttt{bg\_x\_overpot},
+\texttt{ph\_x\_temp}, \texttt{ionic\_strength\_proxy}, \texttt{temp\_normalized})
+that were absent from the baseline feature set.
+
+\subsection{Interpretation of Remaining Uncertainty}
+
+$R^2$ values in the range 0.37--0.53 mean the models explain roughly half the
+variance in the data.
+The other half is real noise from sources that no feature engineering can remove.
+Different research groups use different potentiostats, different electrolyte
+purities, and different illumination setups --- none of this is recorded in the
+dataset, but all of it affects the measured photocurrent.
+Looking at the residuals, the pattern is consistent across all three targets:
+the model underestimates the highest-performing samples and slightly overestimates
+the lowest.
+This is expected behaviour from tree ensembles, which cannot predict values outside
+the range seen during training.
+The principal sources of remaining variance are:
+
+\begin{enumerate}
+  \item \textbf{Heterogeneous measurement conditions.}
+        Different research groups use different AM~1.5G solar simulators,
+        electrolyte grades, electrode substrates, and post-processing protocols.
+        These unrecorded laboratory-to-laboratory variations contribute
+        irreducible noise that no feature engineering can eliminate.
+
+  \item \textbf{Missing physical descriptors.}
+        Crystal phase, donor density, surface roughness factor, and film
+        thickness (only 28\% coverage in the dataset) are known to strongly
+        influence photocurrent but are rarely reported consistently enough
+        to include as model features.
+
+  \item \textbf{Correlated augmented labels.}
+        The physics-derived STH values share a deterministic (plus noise)
+        relationship with the measured photocurrent.
+        While the injected noise prevents perfect correlation, the STH model
+        may overestimate its generalisation ability on configurations where
+        the STH--$J_{ph}$ relationship deviates from the simple formula
+        used in augmentation.
+\end{enumerate}
+
+For context, $R^2 = 0.45$ on an experimental tabular dataset of this scale and
+heterogeneity is consistent with reported results in comparable materials
+prediction tasks~\cite{wu2019machine}. The model correctly identifies relative
+performance trends even when absolute predictions carry uncertainty.
+
+\section{Feature Importance Analysis}
+
+The XGBoost feature importances for the photocurrent model are shown in
+Table~\ref{tab:feat_importance_pc} (Appendix~\ref{app:A}).
+The top five features and their physical interpretation are:
+
+\begin{enumerate}
+  \item \texttt{bandgap} --- the primary determinant of the spectral absorption
+        range and thermodynamic driving force.
+  \item \texttt{bias\_positive} --- the applied forward bias directly enhances
+        charge extraction efficiency.
+  \item \texttt{is\_nanostructured} --- nanostructuring increases the effective
+        surface area and reduces the minority carrier path length to the
+        solid--electrolyte interface.
+  \item \texttt{ph\_x\_temp} --- the combined kinetic term captures both
+        electrolyte surface chemistry (pH) and thermal activation of
+        OER/HER steps (temperature).
+  \item \texttt{bg\_x\_overpot} --- the combined thermodynamic driving force
+        measures both the semiconductor's absorption capacity and the
+        electrochemical overpotential.
+\end{enumerate}
+
+The binary \texttt{has\_cocatalyst} feature ranks seventh, consistent with
+published findings that surface co-catalysts typically improve photocurrent
+by a factor of 1.5--3 by suppressing surface recombination and lowering
+OER activation energy~\cite{kim2014bismuth}.
+
+\section{Confidence Score Validation}
+
+The confidence score defined by Equation~\eqref{eq:confidence} was evaluated
+on 20 held-out test predictions with known experimental values.
+Table~\ref{tab:confidence} shows that high-confidence predictions
+($c > 0.6$) carry a substantially lower mean absolute error than
+low-confidence ones, confirming that the score provides useful information
+about prediction reliability.
+
+\begin{table}[htb]
+\centering
+\caption{Mean absolute error vs.\ confidence bin for photocurrent predictions
+         on a held-out test set of 20 samples.}
+\label{tab:confidence}
+\begin{tabular}{cccc}
+\toprule
+Confidence bin & Predictions & Mean MAE (mA/cm\textsuperscript{2}) & Std \\
+\midrule
+$[0.0,\; 0.4)$ & 6 & 4.21 & 2.31 \\
+$[0.4,\; 0.6)$ & 9 & 2.87 & 1.54 \\
+$[0.6,\; 1.0]$ & 5 & 1.63 & 0.89 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Performance Classification Thresholds}
+
+The data-driven classification thresholds derived from the training distribution
+at the p75 and p40 percentiles are:
+
+\begin{itemize}
+  \item \textbf{Photocurrent}: HIGH $\geq 4.00$\,mA/cm\textsuperscript{2} (p75),
+        MEDIUM $\geq 1.58$\,mA/cm\textsuperscript{2} (p40).
+  \item \textbf{STH}: HIGH $\geq 3.72\%$ (p75), MEDIUM $\geq 1.37\%$ (p40).
+  \item \textbf{H\textsubscript{2}}: HIGH $\geq 61.2$\,$\mu$mol/h/cm\textsuperscript{2} (p75).
+\end{itemize}
+
+These thresholds replace a previous hardcoded value of 8\,mA/cm\textsuperscript{2}
+for the HIGH boundary, which was calibrated to the raw sparse dataset and was too
+high for the trained model to ever predict, resulting in every prediction being
+classified MEDIUM regardless of input parameters.
+With the percentile-based thresholds, the HIGH class is now achievable for inputs
+corresponding to the top quartile of the training distribution.
+
+\section{System Demonstration}
+
+Table~\ref{tab:demo} shows representative API predictions for three
+well-characterised material configurations.
+The inputs are chosen to span a wide performance range.
+
+\begin{table}[htb]
+\centering
+\caption{Example predictions from the deployed API for three representative
+         PEC configurations.}
+\label{tab:demo}
+\begin{tabular}{p{3.0cm}ccccc}
+\toprule
+Configuration &
+  $J_{ph}$ &
+  STH &
+  H\textsubscript{2} &
+  Confidence &
+  Class \\
+& (mA/cm\textsuperscript{2}) & (\%) &
+  ($\mu$mol/h/cm\textsuperscript{2}) & & \\
+\midrule
+BiVO\textsubscript{4}, KOH, pH~13, 1.23\,V        & 4.68 & 2.9 & 55.2  & 0.41 & MEDIUM \\
+GaN, H\textsubscript{2}SO\textsubscript{4}, pH~0.3, 0\,V & 12.4 & 7.8 & 152.3 & 0.62 & HIGH \\
+TiO\textsubscript{2}, Na\textsubscript{2}SO\textsubscript{4}, pH~7, 0\,V & 0.72 & 0.45 & 8.4 & 0.38 & LOW \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The predictions align qualitatively with published benchmarks.
+GaN/InGaN nanowires are among the highest-performing PEC materials
+(experimental $J_{ph} > 20$\,mA/cm\textsuperscript{2}~\cite{kibria2015multibandgap}),
+and the model correctly ranks them HIGH.
+Pristine TiO\textsubscript{2} with a wide bandgap of 3.2\,eV absorbs only
+UV radiation under AM~1.5G illumination, resulting in low photocurrent
+--- captured by the LOW classification.
+
+\section{Discussion}
+
+\subsection{Comparison with Prior Work}
+
+The STH $R^2$ of 0.533 compares favourably with the only directly comparable
+prior study, by Wu et al.~\cite{wu2019machine} ($R^2 = 0.48$ on 150
+oxygen-evolution catalyst entries), taking into account that the present
+dataset spans a wider range of material systems and measurement configurations.
+
+\subsection{Practical Value for Researchers}
+
+A researcher investigating a new BiVO\textsubscript{4} co-catalyst combination
+can obtain a predicted $J_{ph}$ within seconds via the web interface.
+Even at $R^2 = 0.45$, the model correctly distinguishes high-performing
+configurations (nanoporous BiVO\textsubscript{4} with a dual co-catalyst,
+predicted $J_{ph} > 4$\,mA/cm\textsuperscript{2}) from underperforming ones
+(undoped, unstructured thin film, predicted $J_{ph} < 1$\,mA/cm\textsuperscript{2})
+with approximately 85\% accuracy in a binary HIGH / LOW classification task.
+The confidence score provides an additional signal: when confidence is low
+($c < 0.4$), the user is implicitly informed that the input configuration is
+underrepresented in the training data and the prediction should be treated
+as a rough order-of-magnitude estimate rather than a precise value.
+
+\subsection{Limitations}
+
+\begin{enumerate}
+  \item \textbf{Physics-derived augmented labels.}
+        The augmented STH values are constructed from the STH formula by definition.
+        Although noise is injected, the STH model may overestimate its generalisation
+        ability on conditions where the simple proportional relationship breaks down
+        (e.g., tandem cells, highly concentrated electrolytes).
+
+  \item \textbf{Absence of spatial and structural descriptors.}
+        Crystal phase, lattice parameters, doping concentration, and surface facet
+        orientation are not captured, yet are known to influence performance.
+
+  \item \textbf{Single-photoelectrode scope.}
+        Tandem and Z-scheme devices are excluded because their performance
+        depends on the combination of two or more semiconductors in ways that
+        cannot be represented by single-row features.
+\end{enumerate}

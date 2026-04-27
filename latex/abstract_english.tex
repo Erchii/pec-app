@@ -12,9 +12,9 @@ Photoelectrochemical (PEC) water splitting is one of the most promising pathways
 solar hydrogen production, but the experimental search for high-performance
 photoelectrode materials is slow and resource-intensive.
 This work presents a full-stack machine learning system that predicts three key
-performance metrics of PEC cells — Photocurrent Density (mA/cm\textsuperscript{2}),
+performance metrics of PEC cells --- Photocurrent Density (mA/cm\textsuperscript{2}),
 Solar-to-Hydrogen (STH) efficiency (\%), and Hydrogen Evolution Rate
-($\mu$mol\,h\textsuperscript{-1}\,cm\textsuperscript{-2}) — directly from
+($\mu$mol\,h\textsuperscript{-1}\,cm\textsuperscript{-2}) --- directly from
 material and experimental parameters.
 
 A curated dataset of 676 entries was assembled from 529 published experimental
@@ -28,7 +28,7 @@ An ensemble of XGBoost and Random Forest regressors is trained per target, with
 hyperparameter selection via randomised search and generalisation measured by
 5-fold cross-validation.
 Best cross-validated R\textsuperscript{2} scores are 0.454 for Photocurrent,
-0.533 for STH, and 0.366 for H\textsubscript{2} — compared to 0.065, 0.278,
+0.533 for STH, and 0.366 for H\textsubscript{2} --- compared to 0.065, 0.278,
 and $-$0.090 before dataset augmentation.
 
 A REST API (Flask) and single-page web interface expose the models for
