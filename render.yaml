@@ -1,0 +1,29 @@
+services:
+  # ── Backend: Flask + ML models (models are trained during the build) ──
+  - type: web
+    name: pec-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt && python train.py --data data/pec_dataset.csv --cv 5
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: FRONTEND_ORIGIN
+        value: "*"
+
+  # ── Frontend: React + Vite static site ──
+  - type: web
+    name: pec-dashboard
+    runtime: static
+    plan: free
+    rootDir: Diploma/pec-dashboard
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: VITE_API_URL
+        sync: false   # paste the pec-api URL here, e.g. https://pec-api.onrender.com
