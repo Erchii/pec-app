@@ -14,11 +14,10 @@ services:
       - key: FRONTEND_ORIGIN
         value: "*"
 
-  # ── Frontend: React + Vite static site ──
+  # ── Frontend: React + Vite static site (static sites are free, no plan field) ──
   - type: web
     name: pec-dashboard
     runtime: static
-    plan: free
     rootDir: Diploma/pec-dashboard
     buildCommand: npm ci && npm run build
     staticPublishPath: dist
